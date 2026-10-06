@@ -8,7 +8,7 @@ try {
   server.once('error', reject);
   server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited: ${code}`)); });
  });
- for (const file of ['tests/quiz-dates-ui.mjs', 'tests/reading-ui.mjs', 'tests/reading-lookup-ui.mjs', 'tests/audio-ui.mjs']) {
+ for (const file of ['tests/quiz-dates-ui.mjs', 'tests/reading-ui.mjs', 'tests/reading-lookup-ui.mjs', 'tests/audio-ui.mjs', 'tests/photo-import-ui.mjs']) {
   await new Promise((resolve, reject) => {
    const child = spawn(process.execPath, [file], { stdio: 'inherit' });
    child.once('error', reject);
