@@ -27,6 +27,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.net.ssl.HttpsURLConnection;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 /** Own-account requests; keys never return to JavaScript or study backups. */
 @CapacitorPlugin(name = "NativeReading")
@@ -79,14 +80,39 @@ public class NativeReadingPlugin extends Plugin {
         HttpsURLConnection c = connections.get(id); if (c != null) c.disconnect(); call.resolve();
     }
     @PluginMethod public void generate(PluginCall call) {
+        execute(call, false);
+    }
+    @PluginMethod public void generatePhoto(PluginCall call) {
+        execute(call, true);
+    }
+    private boolean validPhotoPayload(JSONObject payload) {
+        if (!"deepseek-flash".equals(payload.optString("model"))) return false;
+        JSONArray messages = payload.optJSONArray("messages");
+        if (messages == null || messages.length() != 2) return false;
+        JSONObject system = messages.optJSONObject(0), user = messages.optJSONObject(1);
+        if (system == null || user == null || !"system".equals(system.optString("role")) || !"user".equals(user.optString("role"))) return false;
+        JSONArray content = user.optJSONArray("content");
+        if (content == null || content.length() < 2 || content.length() > 4) return false;
+        for (int i = 1; i < content.length(); i++) {
+            JSONObject part = content.optJSONObject(i);
+            if (part == null || !"image_url".equals(part.optString("type"))) return false;
+            JSONObject image = part.optJSONObject("image_url");
+            String url = image == null ? "" : image.optString("url");
+            if (url.length() > 3000000 || !url.matches("data:image/jpeg;base64,[A-Za-z0-9+/]+=*")) return false;
+        }
+        return true;
+    }
+    private void execute(PluginCall call, boolean photo) {
         long startedEpoch = epoch.get();
         requests.execute(() -> {
             String id = call.getString("id", ""); HttpsURLConnection c = null; java.util.concurrent.ScheduledFuture<?> deadline = null;
             try {
                 if (cancelled.contains(id) || startedEpoch != epoch.get()) { call.reject("已暂停生成。"); return; }
                 String value = key(); if (value.isEmpty()) { call.reject("请先在设置中填写 API 密钥。"); return; }
-                String body = call.getString("body", ""); JSONObject payload = new JSONObject(body);
-                if (body.length() > 300000 || !validModel(payload.optString("model")) || payload.optInt("max_tokens") > 12000 || payload.optBoolean("stream")) throw new IllegalArgumentException();
+                String body = call.getString("body", "");
+                if (body.length() > (photo ? 9100000 : 300000)) { call.reject("请求内容过大，请减少本次内容。"); return; }
+                JSONObject payload = new JSONObject(body);
+                if (!validModel(payload.optString("model")) || payload.optInt("max_tokens") < 1 || payload.optInt("max_tokens") > (photo ? 24000 : 12000) || payload.optBoolean("stream") || (photo && !validPhotoPayload(payload))) { call.reject("请求格式无效，请重新选择照片或词汇。"); return; }
                 // No arbitrary hosts, redirects, proxy or external script loading.
                 c = (HttpsURLConnection) new URL("https://api.deepseek.com/chat/completions").openConnection();
                 c.setInstanceFollowRedirects(false); c.setConnectTimeout(20000); c.setReadTimeout(180000);
@@ -101,7 +127,7 @@ public class NativeReadingPlugin extends Plugin {
                     while ((count = input.read(buffer)) != -1) { if (bytes.size() + count > 4000000) throw new java.io.IOException(); bytes.write(buffer, 0, count); }
                     JSObject result = new JSObject(); result.put("body", bytes.toString("UTF-8")); call.resolve(result);
                 }
-            } catch (Exception e) { call.reject("网络失败、已暂停或请求超时。已完成短文仍保留；本次请求可能已计费，请手动决定是否重试。"); }
+            } catch (Exception e) { call.reject(photo ? "照片识别网络失败、已取消或请求超时。本次未导入单词，请求可能已计费，请手动决定是否重试。" : "网络失败、已暂停或请求超时。已完成短文仍保留；本次请求可能已计费，请手动决定是否重试。"); }
             finally { if (deadline != null) deadline.cancel(false); connections.remove(id); cancelled.remove(id); if (c != null) c.disconnect(); }
         });
     }
