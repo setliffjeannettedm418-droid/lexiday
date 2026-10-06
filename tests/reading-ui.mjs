@@ -88,7 +88,7 @@ try {
    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
    await page.screenshot({ path: `${output}/reading-${width}.png`, fullPage: true, animations: 'disabled' });
    await navigate('/settings');
-   await page.getByRole('heading', { name: '80 词阅读巩固' }).waitFor();
+   await page.getByRole('heading', { name: 'DeepSeek · 阅读与拍照识词' }).waitFor();
    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
    await page.screenshot({ path: `${output}/reading-settings-${width}.png`, fullPage: true, animations: 'disabled' });
    await navigate(readerPath);

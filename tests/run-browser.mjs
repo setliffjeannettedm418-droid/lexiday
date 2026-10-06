@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+if (process.env.LEXIDAY_TEST_OUTPUT) mkdirSync(process.env.LEXIDAY_TEST_OUTPUT, { recursive: true });
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--config', 'vite.local.config.ts', '--host', '127.0.0.1', '--port', '4173', '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'] });
 let diagnostics = ''; let failure;
 server.stdout.on('data', chunk => { diagnostics += String(chunk); });
@@ -16,7 +18,8 @@ try {
   if (Date.now() >= deadline) throw new Error(`Preview did not start: ${diagnostics}`);
   await new Promise(resolve => setTimeout(resolve, 200));
  }
- for (const file of ['tests/quiz-dates-ui.mjs', 'tests/reading-ui.mjs', 'tests/reading-lookup-ui.mjs', 'tests/audio-ui.mjs', 'tests/photo-import-ui.mjs']) {
+ for (const file of ['tests/photo-import-ui.mjs', 'tests/quiz-dates-ui.mjs', 'tests/reading-ui.mjs', 'tests/reading-lookup-ui.mjs', 'tests/audio-ui.mjs']) {
+  console.log(`Checking ${file}`);
   await new Promise((resolve, reject) => {
    const child = spawn(process.execPath, [file], { stdio: 'inherit' });
    child.once('error', reject);

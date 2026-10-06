@@ -50,7 +50,7 @@ const state = {
     { date: "2026-09-30", wordIds: ids(first) },
     { date: "2026-10-01", wordIds: ids([10, 11, 12, 13]) },
     { date: "2026-10-03", wordIds: ids([14, 15]) },
-    { date: "2026-09-29", wordIds: ["deleted"] },
+    { date: "2026-09-29", wordIds: [] },
   ],
 };
 try {
