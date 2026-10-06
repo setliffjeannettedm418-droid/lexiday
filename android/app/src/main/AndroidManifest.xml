@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="false"
@@ -35,7 +40,7 @@
         </provider>
     </application>
 
-    <!-- Only article generation requires networking. All learning assets stay bundled. -->
+    <!-- AI generation and photo recognition require networking. Learning assets stay bundled. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
 </manifest>
