@@ -108,6 +108,10 @@ try {
         mimeType: "application/json",
         buffer: Buffer.from(JSON.stringify({ version: 1, data })),
       });
+    // File parsing and the confirmation dialog happen in separate React
+    // updates; wait for the action before clicking it so CI does not race
+    // the dialog opening on slower runners.
+    await page.getByRole("button", { name: "确认操作", exact: true }).waitFor();
     await page.getByRole("button", { name: "确认操作", exact: true }).click();
     await page.getByText("备份已恢复", { exact: true }).waitFor();
   };
