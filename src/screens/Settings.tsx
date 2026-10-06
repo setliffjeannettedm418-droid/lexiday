@@ -309,7 +309,7 @@ export default function Settings({
       <div className="note">
         <ShieldCheck size={24} />
         <p>
-          学习记录和已生成文章保存在当前设备。仅生成文章时发送本篇目标词信息至你配置的服务。切换设备或清理应用数据前，请先导出备份。
+          学习记录和已生成文章保存在当前设备。AI 阅读发送本次所需词汇或语境；拍照识词仅在手动识别时发送选中的照片。切换设备或清理应用数据前，请先导出备份。
         </p>
       </div>
       <section className="install-help">

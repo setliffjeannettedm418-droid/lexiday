@@ -2,11 +2,13 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { Word, ReadingArticle } from "../../types";
 import { generationPayload, validateArticle } from "./engine";
 import { lookupPayload, parseLookupCompletion, type LookupSelection } from "./lookup";
+import { photoPayload, parsePhotoCompletion, type ImportPhoto } from "../import/photo";
 export const MODELS = { "deepseek-flash": "DeepSeek Flash", "deepseek-v4-pro": "DeepSeek V4 Pro" };
 export interface ReadingServiceStatus { configured: boolean; model: string }
 const NativeReading = registerPlugin<{
   status(): Promise<ReadingServiceStatus>; configure(options: { key: string; model: string }): Promise<void>;
   clear(): Promise<void>; generate(options: { id: string; body: string }): Promise<{ body: string }>;
+  generatePhoto(options: { id: string; body: string }): Promise<{ body: string }>;
   cancel(options: { id: string }): Promise<void>;
 }>("NativeReading");
 // The browser fallback deliberately keeps the key in memory only.
@@ -37,13 +39,13 @@ export function parseCompletion(body: string, words: Word[]) {
   let value; try { value = JSON.parse(choice.message.content); } catch { throw new Error("文章格式不完整，未保存这篇短文。请手动重试。"); }
   return validateArticle(value, words);
 }
-async function completion(payload: unknown, id: string, signal: AbortSignal) {
+async function completion(payload: unknown, id: string, signal: AbortSignal, photo = false) {
   if (signal.aborted) throw new DOMException("已暂停", "AbortError");
   const body = JSON.stringify(payload); let response: string;
   if (Capacitor.isNativePlatform()) {
     const cancel = () => { void NativeReading.cancel({ id }).catch(() => {}); };
     signal.addEventListener("abort", cancel, { once: true });
-    try { response = (await NativeReading.generate({ id, body })).body; }
+    try { response = (await (photo ? NativeReading.generatePhoto({ id, body }) : NativeReading.generate({ id, body }))).body; }
     finally { signal.removeEventListener("abort", cancel); }
   } else {
     if (!webKey) throw new Error("请先在设置中配置生成服务。");
@@ -68,4 +70,7 @@ export async function generateArticle(words: Word[], model: string, id: string, 
 }
 export async function explainReadingWord(selection: LookupSelection, model: string, id: string, signal: AbortSignal) {
   return parseLookupCompletion(await completion(lookupPayload(selection, model), id, signal), selection);
+}
+export async function recognizePhotos(photos: ImportPhoto[], id: string, signal: AbortSignal) {
+  return parsePhotoCompletion(await completion(photoPayload(photos), id, signal, true));
 }

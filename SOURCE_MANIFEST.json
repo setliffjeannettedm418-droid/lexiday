@@ -485,5 +485,6 @@
     "vite.config.ts": "43e5f02f727ca043f08ebf34789f330580a7a0cb90f426c92f4a454d066988fc",
     "vite.local.config.ts": "195d172bc20f9ac14134bd044f6a8da445650cc70743977cb7b3b0ef35eb9b38",
     "worker/index.ts": "2ed36d7fa996e946d9d7695c5925e7760246f6bf8fa35c06f1bc515c087dc450"
-  }
+  },
+  "scope": "Original v1.8 migration baseline only. Current development files are tracked by Git commits; this is not a v1.9 integrity manifest."
 }

@@ -41,6 +41,9 @@ try {
  const restore = async data => {
    await navigate('/settings');
    await page.getByLabel('导入备份', { exact: true }).setInputFiles({ name: 'test-backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, data })) });
+   // The file is parsed asynchronously before the confirmation dialog is
+   // mounted; wait for it explicitly to avoid a slow-runner race.
+   await page.getByRole('button', { name: '确认操作', exact: true }).waitFor();
    await page.getByRole('button', { name: '确认操作', exact: true }).click();
    await page.getByText('备份已恢复', { exact: true }).waitFor();
  };
@@ -88,7 +91,7 @@ try {
    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
    await page.screenshot({ path: `${output}/reading-${width}.png`, fullPage: true, animations: 'disabled' });
    await navigate('/settings');
-   await page.getByRole('heading', { name: '80 词阅读巩固' }).waitFor();
+   await page.getByRole('heading', { name: 'DeepSeek · 阅读与拍照识词' }).waitFor();
    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
    await page.screenshot({ path: `${output}/reading-settings-${width}.png`, fullPage: true, animations: 'disabled' });
    await navigate(readerPath);

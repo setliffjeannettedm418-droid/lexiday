@@ -23,7 +23,7 @@ try {
    }});
   });
   await page.goto('http://127.0.0.1:4173/test/setup');
-  await page.getByRole('button',{name:'熟词僻义',exact:true}).click();
+  await page.getByRole('combobox',{name:'测试题型',exact:true}).selectOption({ label: '熟词僻义' });
   await page.getByRole('button',{name:/开始测试 ·/}).click();
   await page.waitForFunction(()=>window.audioCalls.length===1);
   assert.equal((await page.evaluate(()=>audioCalls.at(-1))).lang,'en-US');

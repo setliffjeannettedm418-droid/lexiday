@@ -1,0 +1,73 @@
+name: Verify and build Android
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/photo-import-deepseek]
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies and run tests
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+      - name: Run browser regression and photo import checks
+        env:
+          LEXIDAY_TEST_OUTPUT: outputs/ui
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright@1.61.1
+          npx playwright install --with-deps chromium
+          npm run test:browser
+      - name: Prepare verified speech resources and sync Android
+        run: npm run android:sync
+      - name: Install Android SDK packages
+        run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          for sdk_bin in "$sdk_root/cmdline-tools/latest/bin" "$sdk_root/cmdline-tools/bin" "$sdk_root/tools/bin"; do
+            if [ -x "$sdk_bin/sdkmanager" ]; then
+              export PATH="$sdk_bin:$sdk_root/platform-tools:$PATH"
+              break
+            fi
+          done
+          command -v sdkmanager
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          printf 'sdk.dir=%s\n' "$sdk_root" > android/local.properties
+      - name: Compile unsigned release APK
+        working-directory: android
+        run: bash gradlew :app:assembleRelease --no-daemon --console=plain
+      - name: Save APK and exact web build for local signing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Lexiday-v1.9-unsigned
+          path: |
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+            dist-local/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save UI verification screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Lexiday-v1.9-ui-checks
+          path: outputs/ui/
+          if-no-files-found: ignore
+          retention-days: 14

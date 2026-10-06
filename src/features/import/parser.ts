@@ -204,7 +204,7 @@ export async function parseFile(file: File): Promise<Draft[]> {
   } else throw Error("请选择 DOCX、XLSX、CSV 或 JSON 文件。");
   if (!rows.length)
     throw Error(
-      "未识别到词汇。支持带“单词/常见意思”表头的表格，以及带“核心义/考研点/搭配”的双栏词汇卡片；扫描图片暂不支持直接识别。",
+      "未识别到词汇。支持带“单词/常见意思”表头的表格，以及带“核心义/考研点/搭配”的双栏词汇卡片；扫描或手写词表请使用“拍照导入”选择照片。",
     );
   return rows.map((x) => ({ ...x, source: file.name }));
 }

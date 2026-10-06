@@ -50,7 +50,7 @@ const state = {
     { date: "2026-09-30", wordIds: ids(first) },
     { date: "2026-10-01", wordIds: ids([10, 11, 12, 13]) },
     { date: "2026-10-03", wordIds: ids([14, 15]) },
-    { date: "2026-09-29", wordIds: ["deleted"] },
+    { date: "2026-09-29", wordIds: [] },
   ],
 };
 try {
@@ -108,6 +108,10 @@ try {
         mimeType: "application/json",
         buffer: Buffer.from(JSON.stringify({ version: 1, data })),
       });
+    // File parsing and the confirmation dialog happen in separate React
+    // updates; wait for the action before clicking it so CI does not race
+    // the dialog opening on slower runners.
+    await page.getByRole("button", { name: "确认操作", exact: true }).waitFor();
     await page.getByRole("button", { name: "确认操作", exact: true }).click();
     await page.getByText("备份已恢复", { exact: true }).waitFor();
   };
