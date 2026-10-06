@@ -1,12 +1,12 @@
 # 从 ChatGPT Work 迁移到 Codex
 
-这是词序 Lexiday **v1.8 暖杏版**的源码接手包，Android versionCode 为 **9**。
-源码来自已保存提交 `32aa57355528ed537045939ef51a8b9b20858e0a`。
+这是词序 Lexiday **v1.9 暖杏 + DeepSeek 拍照识词版**的源码接手包，Android versionCode 为 **10**。
+开发基线为 GitHub 仓库 v1.8 提交 `87c31aa`；当前功能和验证状态见 HANDOFF.md。
 
 ## 电脑本地开发（最直接）
 
 1. 解压整个 ZIP。
-2. 在电脑端选择 Codex，打开解压后的 `Lexiday-v1.8` 文件夹。选中的目录应直接包含 `package.json`、`src`、`android`。
+2. 在电脑端选择 Codex，打开解压后的 项目文件夹。选中的目录应直接包含 `package.json`、`src`、`android`。
 3. 用文本编辑器打开 `CODEX_PROMPT.txt`，把全部内容发给 Codex。
 4. Codex 会读取接手说明、检查环境、安装依赖并运行测试与预览；之后直接提出你的开发需求。
 
@@ -14,7 +14,7 @@
 
 ## Codex Cloud / 跨账号开发
 
-1. 用目标账号可访问的 GitHub 账号创建一个**私有仓库**。
+1. 用目标账号可访问的 GitHub 账号使用词序现有仓库 https://github.com/setliffjeannettedm418-droid/lexiday，或创建自己的仓库。
 2. 使用 GitHub Desktop 或 Git，把解压后的项目文件提交到仓库根目录。仓库根目录应有 `package.json`，不要只上传 ZIP。
 3. 在 Codex 的云端入口创建环境，连接 GitHub 并选择这个仓库。
 4. 让 Codex 准备依赖和测试环境；检查结果后发布环境，再新建任务，把 `CODEX_PROMPT.txt` 的内容发给它。

@@ -1,6 +1,6 @@
 {
   "name": "lexiday",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -17,7 +17,7 @@
     "dev:local": "vite --config vite.local.config.ts",
     "build:local": "vite build --config vite.local.config.ts && node scripts/generate-sw.mjs dist-local",
     "preview:local": "vite preview --config vite.local.config.ts",
-    "test:unit": "node --import tsx --test tests/learning.test.ts tests/reading.test.ts tests/reading-matcher.test.ts tests/reading-lookup.test.ts tests/quiz-selection.test.ts tests/quiz-setup.test.mjs",
+    "test:unit": "node --import tsx --test tests/learning.test.ts tests/reading.test.ts tests/reading-matcher.test.ts tests/reading-lookup.test.ts tests/quiz-selection.test.ts tests/quiz-setup.test.mjs tests/photo-import.test.ts tests/photo-import-ui.test.mjs",
     "test:browser": "node tests/run-browser.mjs",
     "android:sync": "python3 scripts/prepare-android-speech.py && npm run build:local && cap sync android",
     "android:apk": "npm run android:sync && cd android && ./gradlew :app:assembleDebug"

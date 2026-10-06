@@ -1,8 +1,16 @@
-# 词序 Lexiday v1.8 接手记录
+# 词序 Lexiday v1.9 接手记录
 
 整理日期：2026-10-06。先看 `START_HERE.md`；详细历史与验证记录见 `README.md`、`TESTING.md`。
 
-## 1. 当前交付基线
+## 1. 当前开发版本
+
+当前源码为 **v1.9.0**，Android versionName **1.9** / versionCode **10**，在下述已交付 v1.8 基线增加 DeepSeek 拍照识词。
+
+入口：导入 → 拍照/从相册选择 → 识别并整理 → 编辑、勾选、按日期确认入库。复用 DeepSeek 加密密钥，图片固定使用 Flash，阅读模型不变。代码主要在 `src/features/import/photo.ts`、`src/screens/PhotoImport.tsx` 和 `NativeReadingPlugin.generatePhoto`。每批最多 3 张/40 词，低置信或空释义默认不选；取消/离开不接收迟到结果，不自动重试。相机由 Capacitor 8 的 HTML capture 文件输入调起，Manifest 包含 IMAGE_CAPTURE 查询，不新增 CAMERA/全部存储权限。
+
+本地 43 项测试、类型检查、生产构建、PWA 检查通过。原生接口有变，必须完整 Gradle 编译。仓库 `.github/workflows/build-android.yml` 为只读权限的测试及 unsigned release 构建，产物需下载后在本地用原签名签署；私钥不在仓库和 Actions 中。当前环境无法启动真实浏览器/Gradle 网络套接字，详见 `TESTING.md`。构建、签名、真机和真实 API 状态必须按实际结果报告。
+
+## 2. 上一版已交付基线
 
 | 项目 | 当前值 |
 | --- | --- |
@@ -28,7 +36,7 @@
 
 80 词统计按已提交测试的不同单词累计；每批分成 4 篇各 20 个目标词的短文。译文、语法和详解按需展开，非目标生词也可点查；常见义来自本人词库或随包离线词典，本句详解需手动请求 AI。
 
-**当前实际 AI 服务仍是 DeepSeek**：`src/features/reading/service.ts` 与 `NativeReadingPlugin.java` 都使用它。用户此前询问能否直接用 GPT；GPT 接入尚未实现。本次迁移未更改服务商。应用基本学习不需要 API 密钥，生成新文章/新的语境解释需用户自己的配置。
+**当前实际 AI 服务仍是 DeepSeek（阅读与拍照共用密钥）**：`src/features/reading/service.ts` 与 `NativeReadingPlugin.java` 都使用它。用户此前询问能否直接用 GPT；GPT 接入尚未实现。拍照使用 Flash 图片输入，遵循用户选择，不增加 GPT 服务。应用基本学习不需要 API 密钥，生成新文章/新的语境解释需用户自己的配置。
 
 ## 3. 电脑开发
 
