@@ -2,7 +2,7 @@ name: Verify and build Android
 on:
   workflow_dispatch:
   push:
-    branches: [feature/photo-import-deepseek]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
@@ -53,6 +53,9 @@ jobs:
       - name: Compile unsigned release APK
         working-directory: android
         run: bash gradlew :app:assembleRelease --no-daemon --console=plain
+      - name: Compile debug APK for direct installation
+        working-directory: android
+        run: bash gradlew :app:assembleDebug --no-daemon --console=plain
       - name: Save APK and exact web build for local signing
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -60,6 +63,14 @@ jobs:
           path: |
             android/app/build/outputs/apk/release/app-release-unsigned.apk
             dist-local/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save installable debug APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Lexiday-v1.9-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           compression-level: 0
           if-no-files-found: error
           retention-days: 14
