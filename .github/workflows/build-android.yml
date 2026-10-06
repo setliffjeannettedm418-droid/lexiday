@@ -39,8 +39,17 @@ jobs:
         run: npm run android:sync
       - name: Install Android SDK packages
         run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          for sdk_bin in "$sdk_root/cmdline-tools/latest/bin" "$sdk_root/cmdline-tools/bin" "$sdk_root/tools/bin"; do
+            if [ -x "$sdk_bin/sdkmanager" ]; then
+              export PATH="$sdk_bin:$sdk_root/platform-tools:$PATH"
+              break
+            fi
+          done
+          command -v sdkmanager
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
-          printf 'sdk.dir=%s\n' "$ANDROID_HOME" > android/local.properties
+          printf 'sdk.dir=%s\n' "$sdk_root" > android/local.properties
       - name: Compile unsigned release APK
         working-directory: android
         run: bash gradlew :app:assembleRelease --no-daemon --console=plain
