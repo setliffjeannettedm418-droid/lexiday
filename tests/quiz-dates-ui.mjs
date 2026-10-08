@@ -253,7 +253,7 @@ try {
     await page
       .getByRole("button", { name: "暂时想不起来，显示答案", exact: true })
       .click();
-    await page.getByRole("button", { name: /^不会/ }).click();
+    assert.equal(await page.locator(".rating-buttons").count(), 0);
     await page.getByRole("button", { name: /^(下一题|保存并继续)$/ }).click();
     await page.waitForFunction(
       (index) =>
@@ -281,6 +281,55 @@ try {
   await chooseScope("按日期选词");
   await summary(1, 2);
   await context.setOffline(false);
+  await navigate("/settings");
+  await restore(state);
+  await navigate("/test/setup");
+  await chooseScope("按日期选词");
+  await chooseDates(["2026-10-03"]);
+  const reinforcement = page.getByRole("switch", { name: "自动巩固薄弱词", exact: true });
+  if ((await reinforcement.getAttribute("aria-checked")) === "true")
+    await reinforcement.click();
+  await start().click();
+  await page.getByLabel("暂停并返回测试设置").waitFor();
+  let fast = await session();
+  await page.locator("button.answer").nth(fast.questions[0].options.indexOf(fast.questions[0].answer)).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("lexiday-session")).index === 1);
+  let fastData = await readState();
+  assert.equal(fastData.attempts.length, 1);
+  assert.equal(fastData.attempts[0].correct, true);
+  assert.equal(fastData.attempts[0].rating, 3);
+  fast = await session();
+  const wrong = fast.questions[1].options.find((option) => option !== fast.questions[1].answer);
+  assert(wrong);
+  await page.locator("button.answer").nth(fast.questions[1].options.indexOf(wrong)).click();
+  await page.getByRole("button", { name: "完成测试", exact: true }).waitFor();
+  assert.equal(await page.locator(".rating-buttons").count(), 0);
+  assert.equal((await session()).index, 1);
+  fastData = await readState();
+  assert.equal(fastData.attempts.length, 2);
+  assert.equal(fastData.attempts.at(-1).rating, 1);
+  assert.equal(fastData.records[fast.questions[1].wordId].mastery, 1);
+  for (const dark of [false, true]) {
+    await page.evaluate((dark) => document.documentElement.classList.toggle("dark", dark), dark);
+    for (const width of [320, 390, 430, 1200]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      if (width === 390)
+        await page.screenshot({ path: `${output}/quiz-fast-wrong-${dark ? "dark" : "light"}-390.png`, fullPage: true, animations: "disabled" });
+    }
+  }
+  const wrongSession = await session();
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByRole("button", { name: "完成测试", exact: true }).waitFor();
+  assert.deepEqual(await session(), wrongSession);
+  assert.equal((await readState()).attempts.length, 2);
+  await page.getByRole("button", { name: "完成测试", exact: true }).click();
+  await page.waitForURL("**/test/result");
+  assert.equal((await session()).answers.length, 2);
+  assert.equal((await session()).answers.filter((answer) => answer.correct).length, 1);
+  assert.equal((await readState()).attempts.length, 2);
+  await context.setOffline(false);
   await navigate("/test/setup?word=date-word-4");
   assert.equal(await page.locator(".quiz-date-filter").count(), 0);
   assert.match(await start().innerText(), /1 题/);
@@ -296,7 +345,7 @@ try {
   assert.match(await start().innerText(), /18 题/);
   assert.deepEqual(errors, []);
   console.log(
-    "Date quiz UI passed: assigned dates, single/multiple/range, unique counts, mode/limit, invalid/empty dates, legacy resume, refresh/offline, scoped reinforcement, four widths/light-dark.",
+    "Date quiz UI passed: assigned dates, single/multiple/range, unique counts, mode/limit, invalid/empty dates, legacy resume, refresh/offline, scoped reinforcement, automatic correct advance, immediate wrong grading, offline explanation resume without duplicate attempts, four widths/light-dark.",
   );
   console.log("Screenshots:", output);
   await context.close();
