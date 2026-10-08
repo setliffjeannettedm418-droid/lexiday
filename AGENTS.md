@@ -4,7 +4,7 @@
 
 ## 基线
 
-- 当前为用户选择的 **v1.9 暖杏主题 + DeepSeek 拍照识词**，Android versionName 1.9 / versionCode 10，包名 `com.lexiday.app`。
+- 当前为 **v1.9.1 暖杏主题 + DeepSeek 拍照识词及学习会话修复**，Android versionName 1.9.1 / versionCode 11，包名 `com.lexiday.app`。沿用用户选择的 v1.9 功能与主题。
 - 来源提交：`32aa57355528ed537045939ef51a8b9b20858e0a`。原迁移快照不带 Work Git 历史；后续以当前 GitHub 仓库提交为准。
 - 项目交付目标是独立 Android App。除非用户提出，不发布网站、不重做演示版本，不回退旧版。
 - 首次接手先确认环境、测试和预览；迁移本身不要求重设计或生成新 APK。

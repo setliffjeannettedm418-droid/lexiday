@@ -1,14 +1,16 @@
-# 词序 Lexiday v1.9 接手记录
+# 词序 Lexiday v1.9.1 接手记录
 
 整理日期：2026-10-06。先看 `START_HERE.md`；详细历史与验证记录见 `README.md`、`TESTING.md`。
 
 ## 1. 当前开发版本
 
-当前源码为 **v1.9.0**，Android versionName **1.9** / versionCode **10**，在下述已交付 v1.8 基线增加 DeepSeek 拍照识词。
+当前源码为 **v1.9.1**，Android versionName **1.9.1** / versionCode **11**。本轮基于 GitHub `main` 的 `d2e157c26c248a12eb5a24ec8d511e6a53b54b90` 迁移导入、测试恢复及阅读查词修复；v1.9 增加的拍照识词继续保留。修改与实际验证见 README 的 v1.9.1 说明及 TESTING 的 2026-10-08 记录。
 
 入口：导入 → 拍照/从相册选择 → 识别并整理 → 编辑、勾选、按日期确认入库。复用 DeepSeek 加密密钥，图片固定使用 Flash，阅读模型不变。代码主要在 `src/features/import/photo.ts`、`src/screens/PhotoImport.tsx` 和 `NativeReadingPlugin.generatePhoto`。每批最多 3 张/40 词，低置信或空释义默认不选；取消/离开不接收迟到结果，不自动重试。相机由 Capacitor 8 的 HTML capture 文件输入调起，Manifest 包含 IMAGE_CAPTURE 查询，不新增 CAMERA/全部存储权限。
 
-本地 43 项测试、类型检查、生产构建、PWA 检查通过。原生接口有变，必须完整 Gradle 编译。仓库 `.github/workflows/build-android.yml` 为只读权限的测试及 unsigned release 构建，产物需下载后在本地用原签名签署；私钥不在仓库和 Actions 中。当前环境无法启动真实浏览器/Gradle 网络套接字，详见 `TESTING.md`。构建、签名、真机和真实 API 状态必须按实际结果报告。
+v1.9 原接手环境通过 43 项测试，但当时无法启动真实浏览器/Gradle 网络套接字；这是历史记录。本轮 Windows 环境通过 61 项测试、类型检查、生产构建、PWA 缓存检查及五组 Chrome 浏览器流程。未执行真实付费 AI 请求或 Android 真机检查。
+
+拍照功能涉及原生接口，完整 APK 须用 Gradle 编译。仓库 `.github/workflows/build-android.yml` 在 PR、main 更新或手动启动时执行测试、浏览器检查及完整 Android 构建，产物需按对应记录核对。可覆盖旧安装的交付包须在本地沿用原签名；私钥不在仓库和 Actions 中。此次代码修复未更改 Android 原生接口，构建、签名、真机和真实 API 状态仍须按实际结果报告。
 
 ## 2. 上一版已交付基线
 

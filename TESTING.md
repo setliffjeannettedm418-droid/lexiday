@@ -1,5 +1,17 @@
 # 测试记录
 
+## Android 1.9.1：导入、测试会话与阅读修复（2026-10-08）
+
+- 源码基于 GitHub `main` 提交 `d2e157c`（v1.9），保留拍照/相册识词、暖杏主题、原生接口和学习数据结构。
+- 修改前重新执行 `npm test`：原有 43/43 测试、TypeScript、生产构建及 1/1 PWA 缓存检查通过。新增的三组回归先在未修复 v1.9 上运行，15 项中 14 项失败，分别复现导入、旧测试回调和过期查词问题。
+- 修复后 `npm test`：**61/61** 单元与 jsdom 交互回归、TypeScript、Vite 生产构建和 **1/1** PWA 缓存检查通过。新增 18 项：7 项导入流程、5 项测试会话、4 项阅读查词会话、1 项原句引用定位及 1 项照片识别与文件拖入的互斥检查。原有 9 项拍照导入检查继续通过。
+- `npm run test:browser` 五组 Chrome 流程通过：拍照预览与日期确认入库、单日/多日/范围选词、阅读生成与手动补全、生词查义与语境缓存、自动美式与手动英式/美式发音。包含 320/390/430/1200 px、浅/深色、实际 Service Worker 断网刷新与 IndexedDB 记录核对；发音检查覆盖 390/430/1200 px。
+- 已目视检查新版拍照确认预览。浏览器流程没有页面脚本错误或已检测的横向溢出，保留默认未选中的待核对词和已有学习记录。
+- AI 流程使用隔离测试词库、测试密钥及模拟 DeepSeek 响应；语音使用模拟浏览器引擎。没有发送真实付费请求，不能据此判断手写识别质量、模型语言质量或 Android 扬声器效果。尚未连接 Android 真机，不能声称完成覆盖安装、相机实拍或手机离线冷启动。
+- Android versionName **1.9.1** / versionCode **11**；PR 工作流执行完整 Gradle 编译，实际状态以对应 Actions 运行记录为准。GitHub 的 debug APK 使用 runner 调试签名；升级原手机 App 应使用原签名签署的 release 包。
+
+复现：Node 22.13+ 下先 `npm ci`、`npm test`；安装 Playwright/Chromium 后执行 `npm run test:browser`。可用 `LEXIDAY_CHROME` 指定 Chrome，`CODEX_PRIMARY_RUNTIME_NODE_MODULES` 指定外部 Playwright 包所在目录。以上本次日志和截图保存在电脑的 `词序/优化记录/2026-10-08/github-v1.9/`，未放进源码包。
+
 ## Android 1.9：DeepSeek 拍照识词（2026-10-06）
 
 - 基于 GitHub v1.8 完整源码 `87c31aa`，保留暖杏主题与全部学习功能；增加原生图片请求接口和相机 Intent 查询。
