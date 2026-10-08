@@ -54,11 +54,20 @@ export function validateArticle(value: unknown, words: Word[]): ReadingArticle {
     throw new Error("词汇详解未完整覆盖本篇目标词，未保存这篇短文。请手动重试。");
   for (const w of words) {
     const entry = article.vocabulary.find(v => v.wordId === w.id)!;
+    if (entry.quote) {
+      const quote = normalizeWord(entry.quote);
+      const matchesQuote = (sentence: ReadingArticle["sentences"][number]) =>
+        normalizeWord(sentence.english) === quote && containsWord(sentence.english, w.word);
+      // A full quote disambiguates repeated words. Keep an already matching
+      // index when the same sentence occurs more than once in the article.
+      if (!article.sentences[entry.sentence] || !matchesQuote(article.sentences[entry.sentence])) {
+        const quoted = article.sentences.findIndex(matchesQuote);
+        if (quoted >= 0) entry.sentence = quoted;
+      }
+    }
     if (!article.sentences[entry.sentence] || !containsWord(article.sentences[entry.sentence].english, w.word)) {
       // Sentence numbers are model suggestions: always search the actual body.
-      const found = article.sentences.findIndex(s => containsWord(s.english, w.word));
-      const quoted = entry.quote ? article.sentences.findIndex(s => normalizeWord(s.english) === normalizeWord(entry.quote!) && containsWord(s.english, w.word)) : -1;
-      entry.sentence = quoted >= 0 ? quoted : found;
+      entry.sentence = article.sentences.findIndex(s => containsWord(s.english, w.word));
       if (entry.sentence < 0) article.unmatchedWordIds.push(w.id);
     }
   }
