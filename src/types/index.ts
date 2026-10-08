@@ -79,6 +79,7 @@ export interface Session {
   index: number;
   answers: { wordId: string; correct: boolean }[];
   selected?: string;
+  spelling?: string;
   rating?: number;
   completed: boolean;
   autoReview?: boolean;
