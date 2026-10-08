@@ -57,7 +57,7 @@ try {
    await navigate(`/test/setup?word=${id}`);
    await page.getByRole('button', { name: /开始测试 ·/ }).click();
    await page.getByRole('button', { name: '暂时想不起来，显示答案', exact: true }).click();
-   await page.getByRole('button', { name: /^不会/ }).click();
+   assert.equal(await page.locator('.rating-buttons').count(), 0);
    await page.getByRole('button', { name: '保存本题并结束本次测试', exact: true }).click();
    await page.waitForURL('**/test/result');
  };

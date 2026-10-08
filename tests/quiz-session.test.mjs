@@ -68,7 +68,7 @@ test("a save finishing after pause cannot replace a new session or navigate away
     go: (path) => routes.push(path), speak: async () => {},
   };
   const ui = await mount(Quiz, props);
-  await click(ui.element.querySelector(".rating-area .primary"));
+  assert.equal(saves, 1); // Restored correct answers save and advance automatically.
   await click(ui.element.querySelector('[aria-label="暂停并返回测试设置"]'));
   await ui.close();
   session = { ...makeSession(["beta"]), id: "new-session" };
@@ -85,7 +85,6 @@ test("a save finishing after pause cannot replace a new session or navigate away
   session = clone(original);
   const resumed = await mount(Quiz, { ...props, state, session });
   try {
-    await click(resumed.element.querySelector(".rating-area .primary"));
     assert.equal(saves, 1);
     assert.equal(state.attempts.length, 1);
     assert.equal(state.records.alpha.correctCount, 1);
@@ -103,7 +102,6 @@ test("a pending save cannot advance a replaced session even if the Quiz componen
   const props = { state: makeState(), session, update: (s) => updates.push(s), save: async () => gate, go: (p) => routes.push(p), speak: async () => {} };
   const ui = await mount(Quiz, props);
   try {
-    await click(ui.element.querySelector(".rating-area .primary"));
     session = { ...makeSession(["beta"]), id: "replacement-session" };
     await ui.render({ ...props, session });
     await act(async () => { release(); await gate; });
@@ -138,7 +136,9 @@ test("spelling drafts and submitted answers survive remounts, and the next quest
     assert(input.disabled);
     assert.equal(input.value, "alpah");
     assert.match(ui.element.textContent, /回答错误/);
-    await click(button(ui.element, "不会"));
+    assert.equal(state.attempts[0].rating, 1);
+    assert.equal(state.records.alpha.mastery, 1);
+    assert.equal(ui.element.querySelector(".rating-buttons"), null);
     await click(ui.element.querySelector(".rating-area .primary"));
     assert.equal(session.index, 1);
     assert.equal(session.spelling, undefined);
@@ -173,11 +173,174 @@ test("retry preserves automatic reinforcement on and off and records the new ini
       go() {}, speak: async () => {},
     });
     try {
-      await click(quiz.element.querySelector(".rating-area .primary"));
       assert.equal(state.records.alpha.mastery, 2);
       assert.equal(session.completed, !autoReview);
       assert.equal(session.questions.length, autoReview ? 2 : 1);
       assert.equal(session.initialSize, 1);
     } finally { await quiz.close(); }
   }
+});
+
+async function flow(initialSession, { beforeSave } = {}) {
+  let state = makeState();
+  let session = initialSession;
+  let ui;
+  let saves = 0;
+  const routes = [];
+  const props = () => ({
+    state, session,
+    update(next) { session = clone(next); ui?.renderNow(props()); },
+    async save(next) {
+      saves++;
+      await beforeSave?.(saves);
+      state = typeof next === "function" ? next(state) : next;
+      ui?.renderNow(props());
+    },
+    go(path) { routes.push(path); }, speak: async () => {},
+  });
+  ui = await mount(Quiz, props());
+  return { ui, routes, get state() { return state; }, get session() { return session; }, get saves() { return saves; } };
+}
+const choiceSession = () => ({
+  ...makeSession(["alpha", "beta"]),
+  questions: words.map(w => ({ wordId: w.id, type: "en", prompt: w.word, subtitle: "", answer: w.commonMeaning, options: [w.commonMeaning, "错误选项"] })),
+});
+
+test("a correct choice saves rating 3 and moves straight to the next question, then finishes without self-rating", async () => {
+  const f = await flow(choiceSession());
+  try {
+    await click(button(f.ui.element, "释义 alpha"));
+    assert.equal(f.session.index, 1);
+    assert.equal(f.state.attempts.length, 1);
+    assert.equal(f.state.attempts[0].correct, true);
+    assert.equal(f.state.attempts[0].rating, 3);
+    assert.equal(f.state.records.alpha.correctCount, 1);
+    assert.equal(f.ui.element.querySelector(".rating-buttons"), null);
+    assert.match(f.ui.element.querySelector("h1").textContent, /beta/);
+    await click(button(f.ui.element, "释义 beta"));
+    assert.equal(f.session.completed, true);
+    assert.equal(f.session.answers.length, 2);
+    assert.equal(f.state.attempts.length, 2);
+    assert.deepEqual(f.routes, ["/test/result"]);
+  } finally { await f.ui.close(); }
+});
+
+test("a wrong choice is saved as unknown immediately and remains on its explanation until Enter", async () => {
+  const f = await flow(choiceSession());
+  try {
+    await click(button(f.ui.element, "错误选项"));
+    assert.equal(f.session.index, 0);
+    assert.equal(f.session.rating, 1);
+    assert.equal(f.state.attempts.length, 1);
+    assert.equal(f.state.attempts[0].rating, 1);
+    assert.equal(f.state.records.alpha.mastery, 1);
+    assert.match(f.ui.element.textContent, /本题判为不会/);
+    assert.match(f.ui.element.querySelector(".feedback").textContent, /释义 alpha/);
+    assert.equal(f.ui.element.querySelector(".rating-buttons"), null);
+    await act(async () => {
+      window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "m", bubbles: true }));
+      window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "k", bubbles: true }));
+    });
+    assert.equal(f.session.rating, 1);
+    await act(async () => window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    assert.equal(f.session.index, 1);
+    assert.equal(f.state.attempts.length, 1);
+    assert.equal(f.saves, 1);
+  } finally { await f.ui.close(); }
+});
+
+test("correct spelling ignores case and surrounding space and advances automatically", async () => {
+  const f = await flow(makeSession(["alpha", "beta"]));
+  try {
+    await type(f.ui.element.querySelector('[aria-label="英文拼写"]'), " ALPHA ");
+    await click(button(f.ui.element, "确认答案"));
+    assert.equal(f.session.index, 1);
+    assert.equal(f.state.attempts[0].rating, 3);
+    assert.equal(f.state.attempts[0].correct, true);
+    assert.equal(f.ui.element.querySelector('[aria-label="英文拼写"]').value, "");
+  } finally { await f.ui.close(); }
+});
+
+test("judgment questions grade the selected label, including a correct answer labelled wrong", async () => {
+  for (const selected of ["错误", "正确"]) {
+    const session = choiceSession();
+    session.questions[0] = { ...session.questions[0], type: "judge", answer: "错误", options: ["正确", "错误"] };
+    const f = await flow(session);
+    try {
+      await click(button(f.ui.element, selected));
+      const right = selected === "错误";
+      assert.equal(f.state.attempts[0].correct, right);
+      assert.equal(f.state.attempts[0].rating, right ? 3 : 1);
+      assert.equal(f.session.index, right ? 1 : 0);
+    } finally { await f.ui.close(); }
+  }
+});
+
+test("revealing an unknown answer saves it once before continuing", async () => {
+  const f = await flow(choiceSession());
+  try {
+    await click(button(f.ui.element, "暂时想不起来"));
+    assert.equal(f.state.attempts.length, 1);
+    assert.equal(f.state.attempts[0].correct, false);
+    assert.equal(f.state.attempts[0].rating, 1);
+    assert.equal(f.session.index, 0);
+    await click(button(f.ui.element, "下一题"));
+    assert.equal(f.session.index, 1);
+    assert.equal(f.saves, 1);
+  } finally { await f.ui.close(); }
+});
+
+test("rapid choices and held number keys cannot replace or duplicate the first answer", async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = await flow(choiceSession(), { beforeSave: () => gate });
+  try {
+    const right = button(f.ui.element, "释义 alpha");
+    const wrong = button(f.ui.element, "错误选项");
+    await act(async () => { right.click(); wrong.click(); right.click(); });
+    assert.equal(f.session.selected, "释义 alpha");
+    assert.equal(f.saves, 1);
+    assert.equal(f.session.index, 0);
+    assert.equal(f.state.attempts.length, 0);
+    assert(button(f.ui.element, "正在保存").disabled);
+    await act(async () => { release(); await gate; });
+    assert.equal(f.session.index, 1);
+    assert.equal(f.state.attempts.length, 1);
+    await act(async () => window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "1", repeat: true, bubbles: true })));
+    assert.equal(f.session.selected, undefined);
+    assert.equal(f.state.attempts.length, 1);
+  } finally { await f.ui.close(); }
+});
+
+test("a failed correct-answer save stays on the question and only advances after a successful retry", async () => {
+  const f = await flow(choiceSession(), { beforeSave: calls => { if (calls === 1) throw new Error("disk full"); } });
+  try {
+    await click(button(f.ui.element, "释义 alpha"));
+    assert.equal(f.session.index, 0);
+    assert.equal(f.state.attempts.length, 0);
+    assert.match(f.ui.element.querySelector('[role="alert"]').textContent, /暂未保存/);
+    assert.equal(f.saves, 1);
+    await click(button(f.ui.element, "重试保存"));
+    assert.equal(f.session.index, 1);
+    assert.equal(f.state.attempts.length, 1);
+    assert.equal(f.state.records.alpha.correctCount, 1);
+    assert.equal(f.ui.element.querySelector('[role="alert"]'), null);
+  } finally { await f.ui.close(); }
+});
+
+test("a failed wrong-answer save can be retried while keeping its explanation open", async () => {
+  const f = await flow(choiceSession(), { beforeSave: calls => { if (calls === 1) throw new Error("disk full"); } });
+  try {
+    await click(button(f.ui.element, "错误选项"));
+    assert.equal(f.state.attempts.length, 0);
+    await click(button(f.ui.element, "重试保存"));
+    assert.equal(f.session.index, 0);
+    assert.equal(f.state.attempts.length, 1);
+    assert.equal(f.state.attempts[0].rating, 1);
+    assert.equal(f.ui.element.querySelector('[role="alert"]'), null);
+    await click(button(f.ui.element, "下一题"));
+    assert.equal(f.session.index, 1);
+    assert.equal(f.saves, 2);
+    assert.equal(f.state.records.alpha.wrongCount, 1);
+  } finally { await f.ui.close(); }
 });
