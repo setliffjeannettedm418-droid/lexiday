@@ -173,9 +173,16 @@ export function Quiz({
   go: (p: string) => void;
   speak: Speak;
 }) {
-  const [spelling, setSpelling] = useState("");
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
+  const mounted = useRef(false);
+  const currentSession = useRef(session);
+  currentSession.current = session;
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const spelling = session.spelling ?? "";
   const q = session.questions[session.index];
   const w = state.words.find((w) => w.id === q?.wordId);
   const revealed = session.selected !== undefined;
@@ -217,12 +224,21 @@ export function Quiz({
             },
           ],
         }));
+      // The answer may finish saving after navigation. Keep the saved attempt,
+      // but never let an old page replace a newer session or force navigation.
+      // Resuming this question can safely advance using the same attempt ID.
+      if (
+        !mounted.current ||
+        currentSession.current.id !== session.id ||
+        currentSession.current.index !== session.index
+      ) return;
       const s = {
         ...session,
         index: session.index + 1,
         answers: [...session.answers, { wordId: w.id, correct }],
         selected: undefined,
         rating: undefined,
+        spelling: undefined,
         completed: session.index + 1 >= session.questions.length,
       };
       if (s.completed && session.autoReview && !finish) {
@@ -246,12 +262,11 @@ export function Quiz({
       }
       if (finish) s.completed = true;
       update(s);
-      setSpelling("");
       if (s.completed) go("/test/result");
       else window.scrollTo({ top: 0, behavior: "instant" });
     } finally {
       saving.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   useEffect(() => {
@@ -267,6 +282,7 @@ export function Quiz({
   }, [session.id, session.index, state.settings.audio]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (busy) return;
       if (
         (e.target as HTMLElement)?.matches(
           "input,textarea,[contenteditable=true]",
@@ -346,9 +362,9 @@ export function Quiz({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="输入英文单词…"
-                value={spelling}
+                value={revealed ? session.selected : spelling}
                 disabled={revealed}
-                onChange={(e) => setSpelling(e.target.value)}
+                onChange={(e) => update({ ...session, spelling: e.target.value })}
               />
               <button
                 disabled={revealed || !spelling.trim()}
@@ -426,6 +442,7 @@ export function Quiz({
             {["不会", "模糊", "掌握"].map((v, i) => (
               <button
                 key={v}
+                disabled={busy}
                 onClick={() => update({ ...session, rating: i + 1 })}
                 className={
                   session.rating === i + 1 ? "selected r" + (i + 1) : ""
@@ -496,6 +513,8 @@ export function Result({
       .filter(Boolean) as Word[];
     start({
       id: newId(),
+      autoReview: session.autoReview ?? false,
+      initialSize: candidates.length,
       questions: candidates.map((w) => question(w, state.words, "mixed", true)),
       index: 0,
       answers: [],
