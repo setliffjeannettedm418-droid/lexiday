@@ -20,6 +20,7 @@ import {
 } from "../components/ui";
 import { question, modes, shuffle } from "../features/quiz/engine";
 import { scheduler, reinforcementWords } from "../features/review/scheduler";
+import { firstStudyDays, localStudyDate } from "../features/review/plan";
 import { today } from "../db";
 import { DateSelection } from "../features/quiz/DateSelection";
 import { scopes, quizDays, selectQuizWords, selectedQuizDays, type QuizDateSelection } from "../features/quiz/selection";
@@ -210,15 +211,17 @@ export function Quiz({
         await save(current => {
           savedState = current;
           if (current.attempts.some(a => a.id === attemptId)) return current;
+          const now = Date.now();
           savedState = {
             ...current,
             records: {
               ...current.records,
-              [w.id]: scheduler.review(current.records[w.id], w.id, correct, rating, q.type),
+              [w.id]: { ...scheduler.review(current.records[w.id], w.id, correct, rating, q.type, now),
+                firstStudyDate: firstStudyDays(current, now).get(w.id) ?? localStudyDate(now) },
             },
             attempts: [...current.attempts, {
               id: attemptId, sessionId: session.id, wordId: w.id,
-              time: Date.now(), correct, type: q.type, rating,
+              time: now, studyDate: localStudyDate(now), correct, type: q.type, rating,
             }],
           };
           return savedState;
@@ -323,8 +326,8 @@ export function Quiz({
       <div className="quiz-top">
         <button
           className="icon-button"
-          aria-label="暂停并返回测试设置"
-          onClick={() => go("/test/setup")}
+          aria-label={session.reviewDate ? "暂停并返回复习计划" : "暂停并返回测试设置"}
+          onClick={() => go(session.reviewDate ? "/review" : "/test/setup")}
         >
           <ArrowLeft />
         </button>
@@ -509,6 +512,7 @@ export function Result({
     start({
       id: newId(),
       autoReview: session.autoReview ?? false,
+      reviewDate: session.reviewDate,
       initialSize: candidates.length,
       questions: candidates.map((w) => question(w, state.words, "mixed", true)),
       index: 0,
@@ -563,6 +567,7 @@ export function Result({
       <button className="secondary wide" onClick={() => go("/")}>
         返回首页
       </button>
+      {session.reviewDate && <button className="secondary wide" onClick={() => go("/review")}>返回复习计划</button>}
     </div>
   );
 }

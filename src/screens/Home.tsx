@@ -3,12 +3,18 @@ import { ProgressBar } from "../components/ui";
 import { today } from "../db";
 import { pendingWords } from "../features/reading/engine";
 import type { State, Session } from "../types";
+import { useMemo } from "react";
+import { buildReviewPlan, localStudyDate, reviewForDate } from "../features/review/plan";
+import { useReviewClock } from "../features/review/useReviewClock";
 
 export default function Home({ state, go, session }: {
   state: State;
   go: (path: string) => void;
   session: Session | null;
 }) {
+  const now = useReviewClock();
+  const planned = useMemo(() => reviewForDate(buildReviewPlan(state, now), localStudyDate(now), localStudyDate(now)), [state, now]);
+  const plannedDone = planned.filter(item => item.status === "done").length;
   const day = state.days.find(d => d.date === today());
   const todayCount = state.words.filter(w => day?.wordIds.includes(w.id)).length;
   const due = state.words.filter(w => state.records[w.id]?.nextReview <= Date.now()).length;
@@ -31,6 +37,7 @@ export default function Home({ state, go, session }: {
         <span>到期复习</span><strong>{due}<small>词</small></strong>
       </button>
     </div>
+    <button className="home-review-plan" onClick={() => go("/review")}><span><strong><CalendarDays size={17} />每日复习计划</strong><small>{planned.length ? `今日已完成 ${plannedDone} / ${planned.length} 词 · 待复习 ${planned.length - plannedDone} 词` : "查看记忆曲线与每日复习词表"}</small></span><ChevronRight size={19} /></button>
     <button className="primary wide home-start" onClick={() => go("/test/setup")}>开始测试<ArrowRight size={18} /></button>
     {unfinished && <button className="home-resume" onClick={() => go("/test/session")}>继续上次测试 · 第 {session.index + 1} 题<ChevronRight size={16} /></button>}
     <div className="home-entry-grid">
