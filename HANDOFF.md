@@ -1,6 +1,18 @@
-# 词序 Lexiday v1.9.1 接手记录
+# 词序 Lexiday v1.9.2 接手记录
 
-整理日期：2026-10-08。先看 `START_HERE.md`；详细历史与验证记录见 `README.md`、`TESTING.md`。
+整理日期：2026-10-11。先看 `START_HERE.md`；详细历史与验证记录见 `README.md`、`TESTING.md`。
+
+## 本轮更新：v1.9.2
+
+基于本地提交 `f3995d984a62315be7f4ce31656669252730ae42` 增加用户确认的复习预览功能并纳入三种主题。版本 1.9.2 / versionCode 12。复习页面在 `src/screens/Review.tsx`，排期和旧记录迁移在 `src/features/review/plan.ts`，节点设置在 `src/screens/ReviewSettings.tsx`；三种风格在 `app/themes.css`。
+
+排期从首次实际作答的日历日计算，默认第 1、2、4、7、15、30 天。仅导入不计时；今日合并未完成的逾期节点；同一词当天最后一次正确且 rating=3 的答题完成已到期节点，未来节点不变。原有 `scheduler.nextReview` 与错题巩固未替换。旧记录优先从最早可用 attempt 推断首次学习日，缺失明细时退回 lastReview；新增可选 `firstStudyDate`、`studyDate`、`reviewDays`、`appearance` 和 `session.reviewDate`，无需清空或重建数据库。
+
+已通过 87 项单元/交互测试、TypeScript、生产构建、PWA 缓存检查和六组真实 Chrome 自动化流程。浏览器验证含旧备份迁移、曲线/日期清单、正确/错误进度、未完成会话保护、离线/跨天、主题和 320/390/430/1200px 布局。付费 AI 使用模拟响应；尚未进行 Android 真机安装。APK 构建与签名结果见 TESTING 的本轮记录。
+
+Windows 中文项目路径触发 Android 构建工具路径限制；使用独立 ASCII 路径的相同 Android 源码与同步资源进行完整 Gradle 编译。语音资源清单统一使用 POSIX 分隔符，确保 Windows 生成清单后 APK 内路径仍可逐项校验。不使用旧页面替换脚本。
+
+以下为 v1.9.1 及更早接手历史，涉及“当前版本”的描述以本节为准。
 
 ## 1. 当前开发版本
 
