@@ -12,6 +12,7 @@ export interface Word {
   updatedAt: number;
 }
 export interface StudyRecord {
+  firstStudyDate?: string;
   wordId: string;
   correctCount: number;
   wrongCount: number;
@@ -31,6 +32,7 @@ export interface DailyWordList {
   wordIds: string[];
 }
 export interface Attempt {
+  studyDate?: string;
   id: string;
   sessionId: string;
   wordId: string;
@@ -39,8 +41,11 @@ export interface Attempt {
   type: string;
   rating: number;
 }
+export type ThemeStyle = "apricot" | "paper" | "aurora";
 export interface Settings {
+  reviewDays?: number[];
   theme: string;
+  appearance?: ThemeStyle;
   goal: number;
   count: string;
   mode: string;
@@ -74,6 +79,7 @@ export interface Question {
   answer: string;
 }
 export interface Session {
+  reviewDate?: string;
   id: string;
   questions: Question[];
   index: number;
