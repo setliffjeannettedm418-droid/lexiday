@@ -30,6 +30,7 @@ import { Picker } from "../components/ui";
 import { download, defaults } from "../db";
 import { modes } from "../features/quiz/engine";
 import { normalizeThemeStyle, themeStyles } from "../features/theme/theme";
+import { validateExamBackup } from "../features/exams/engine";
 export default function Settings({
   state,
   save,
@@ -146,6 +147,7 @@ export default function Settings({
       )
         throw Error("设置格式错误");
       validateReadingBackup(s);
+      validateExamBackup(s);
       s.settings.readingAuto = false;
       setBackup(initializeReview(initializeReading(s)));
       setAction("restore");
@@ -162,7 +164,7 @@ export default function Settings({
           ? backup
           : action === "records"
             ? { ...current, records: {}, attempts: [], reading: { version: 1, batches: [] } }
-            : { ...current, words: [], records: {}, days: [], attempts: [], reading: { version: 1, batches: [] } }
+            : { ...current, words: [], records: {}, days: [], attempts: [], reading: { version: 1, batches: [] }, ...(current.examReading ? { examReading: { ...current.examReading, contexts: [] } } : {}) }
         ),
       );
       clearSession();
@@ -351,7 +353,7 @@ export default function Settings({
         <div className="setting-row">
           <div>
             <strong>清空学习记录</strong>
-            <p>保留单词内容与每日词表；同时移除阅读材料和累计进度</p>
+            <p>保留单词、每日词表和已下载真题；移除生成的巩固短文和累计进度</p>
           </div>
           <button
             className="text-button danger"
@@ -363,7 +365,7 @@ export default function Settings({
         <div className="setting-row">
           <div>
             <strong>清空词库</strong>
-            <p>移除所有单词、每日词表、学习记录和阅读材料</p>
+            <p>移除单词、每日词表、学习记录、生成短文及采集词来源；保留已下载真题</p>
           </div>
           <button
             className="text-button danger"

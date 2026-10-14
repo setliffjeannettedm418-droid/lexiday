@@ -44,6 +44,7 @@ export default function Home({ state, go, session }: {
       <button onClick={() => go("/import")}><Upload size={20} /><span>导入词表</span></button>
       <button onClick={() => go("/test/setup?scope=dates")}><CalendarDays size={20} /><span>按日期选词</span></button>
     </div>
+    <button className="home-exam-entry" onClick={() => go("/exam-reading")}><BookOpenText size={23} /><span><strong>英语二真题阅读</strong><small>2010—2026 · 点词查义，加入今日词表</small></span><ArrowRight size={18} /></button>
     <button className="home-reading-card" onClick={() => go(latest ? `/reading/${encodeURIComponent(latest.id)}` : "/reading")}>
       <span className="home-reading-label"><BookOpenText size={17} />阅读巩固</span>
       <h2>{latest?.articles[0]?.title || "在文章里，\n重新遇见学过的词。"}</h2>

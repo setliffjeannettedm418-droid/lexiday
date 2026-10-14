@@ -218,6 +218,7 @@ export function WordDetail({
           </div>
         ))}
         <small className="source">来源：{w.source}</small>
+        {(state.examReading?.contexts || []).filter(context => context.wordId === id).slice(-10).reverse().map((context, index) => <div className="definition exam-word-context" key={index}><small>英语二真题中的用法 · {context.articleId.match(/english2-(\d+)-reading-(\d+)/)?.slice(1).join(" · 阅读 ")}</small><p className="english">{context.sentence}</p><p>{context.meaning}</p><button className="text-button" onClick={() => go(`/exam-reading/${context.articleId}`)}>回到原文<ArrowRight size={15} /></button></div>)}
       </section>
       <div className="stats-strip">
         <StatCard label="正确次数" value={r?.correctCount || 0} />
