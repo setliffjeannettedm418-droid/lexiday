@@ -33,6 +33,13 @@ export async function lookupDictionary(surface: string): Promise<DictionaryEntry
   }
   return null;
 }
+/** Collection uses a dictionary-confirmed lemma and its own definition, not a guessed stem. */
+export async function lookupCollectionDictionary(surface: string): Promise<DictionaryEntry | null> {
+  const entry = await lookupDictionary(surface);
+  const base = entry?.exchange.split("/").find(part => part.startsWith("0:"))?.slice(2);
+  if (!base || !dictionaryCandidates(surface).includes(normalizeWord(base))) return entry;
+  return await lookupDictionary(base) || entry;
+}
 export function wordForms(exchange: string) {
   const names: Record<string, string> = { p: "过去式", d: "过去分词", i: "现在分词", "3": "第三人称单数", s: "复数", r: "比较级", t: "最高级", "0": "原形" };
   return exchange.split("/").flatMap(part => {

@@ -3,6 +3,7 @@ import type { Word, ReadingArticle } from "../../types";
 import { generationPayload, validateArticle } from "./engine";
 import { lookupPayload, parseLookupCompletion, type LookupSelection } from "./lookup";
 import { photoPayload, parsePhotoCompletion, type ImportPhoto } from "../import/photo";
+import { sentencePayload, parseSentenceCompletion, translationPayload, parseTranslationCompletion } from "../exams/engine";
 export const MODELS = { "deepseek-flash": "DeepSeek Flash", "deepseek-v4-pro": "DeepSeek V4 Pro" };
 export interface ReadingServiceStatus { configured: boolean; model: string }
 const NativeReading = registerPlugin<{
@@ -73,4 +74,10 @@ export async function explainReadingWord(selection: LookupSelection, model: stri
 }
 export async function recognizePhotos(photos: ImportPhoto[], id: string, signal: AbortSignal) {
   return parsePhotoCompletion(await completion(photoPayload(photos), id, signal, true));
+}
+export async function explainExamSentence(sentence: string, model: string, id: string, signal: AbortSignal) {
+  return parseSentenceCompletion(await completion(sentencePayload(sentence, model), id, signal), sentence);
+}
+export async function translateExamParagraph(paragraph: string, model: string, id: string, signal: AbortSignal) {
+  return parseTranslationCompletion(await completion(translationPayload(paragraph, model), id, signal), paragraph);
 }
