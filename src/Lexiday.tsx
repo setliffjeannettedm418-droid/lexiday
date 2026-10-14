@@ -33,6 +33,7 @@ import { queueReading } from "./features/reading/engine";
 import { useReading } from "./features/reading/useReading";
 import { normalizeThemeStyle } from "./features/theme/theme";
 import Review from "./screens/Review";
+import ExamReading from "./screens/ExamReading";
 const links = [
   ["/", "首页", House],
   ["/words", "我的词库", BookOpen],
@@ -40,6 +41,7 @@ const links = [
   ["/mistakes", "错题复习", RotateCcw],
   ["/review", "复习计划", CalendarCheck],
   ["/reading", "阅读巩固", BookOpenText],
+  ["/exam-reading", "真题阅读", BookOpenText],
   ["/stats", "学习统计", ChartNoAxesCombined],
 ] as const;
 const SystemBars = registerPlugin<{ setStyle(options: { style: string }): Promise<void> }>('SystemBars');
@@ -176,6 +178,8 @@ export default function Lexiday() {
     content = <ImportPage state={state} save={save} go={go} />;
   else if (route === "/stats") content = <Stats state={state} go={go} />;
   else if (route === "/review") content = <Review state={state} session={session} start={start} go={go} />;
+  else if (route === "/exam-reading" || route.startsWith("/exam-reading/"))
+    content = <ExamReading key={path} state={state} save={save} go={go} speak={speak} controls={readingControls} id={route.split("/")[2]} year={Number(params.get("year")) || undefined} />;
   else if (route === "/reading" || route.startsWith("/reading/"))
     content = <Reading key={path} state={state} save={save} go={go} speak={speak} controls={readingControls} id={route.split("/")[2] ? decodeURIComponent(route.split("/")[2]) : undefined} />;
   else if (route === "/settings")
