@@ -4,6 +4,7 @@
 @import "./apricot.css";
 @import "./themes.css";
 @import "../src/features/review/review.css";
+@import "../src/features/exams/exams.css";
 @custom-variant dark (&:is(.dark *));
 :root {
   --background: #f7f8fa;
