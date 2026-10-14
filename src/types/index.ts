@@ -61,7 +61,15 @@ export interface State {
   attempts: Attempt[];
   settings: Settings;
   reading?: ReadingState;
+  examReading?: ExamReadingState;
 }
+export interface ExamSentenceAnalysis { sentence: string; translation: string; structure: string; grammar: string; createdAt: number }
+// `paragraph` keeps the exact source text: a body paragraph or one question with its options.
+// Retain the field name so existing paragraph translation backups remain compatible.
+export interface ExamParagraphTranslation { paragraph: string; translation: string; createdAt: number }
+export interface ExamReadingArticle { id: string; paragraphs: string[]; questions: string[]; downloadedAt: number; lookups?: ReadingLookup[]; analyses?: ExamSentenceAnalysis[]; translations?: ExamParagraphTranslation[] }
+export interface ExamWordContext { wordId: string; articleId: string; surface: string; sentence: string; meaning: string; createdAt: number }
+export interface ExamReadingState { version: 1; articles: ExamReadingArticle[]; contexts: ExamWordContext[] }
 export type SaveState = (next: State | ((current: State) => State)) => Promise<void>;
 export interface ReadingSentence { english: string; translation: string; structure: string; grammar: string; pattern: string; application: string; applicationTranslation: string }
 export interface ReadingVocabulary { wordId: string; sentence: number; quote?: string; meaning: string; partOfSpeech: string; usage: string; contrast: string; example: string; exampleTranslation: string }
