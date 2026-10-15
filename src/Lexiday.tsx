@@ -1,7 +1,7 @@
 import { pronounce, stopSpeech, type Accent } from "./features/audio/speech";
 "use client";
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import {
   BookOpen,
   CalendarCheck,
@@ -34,6 +34,7 @@ import { useReading } from "./features/reading/useReading";
 import { normalizeThemeStyle } from "./features/theme/theme";
 import Review from "./screens/Review";
 import ExamReading from "./screens/ExamReading";
+import { wordListReturn } from "./features/words/view";
 const links = [
   ["/", "首页", House],
   ["/words", "我的词库", BookOpen],
@@ -66,6 +67,8 @@ export default function Lexiday() {
   }, []);
   const readingControls = useReading(state, save, offline);
   useEffect(() => {
+    const scrollRestoration = history.scrollRestoration;
+    history.scrollRestoration = "manual";
     document.documentElement.classList.toggle("native-app", Capacitor.isNativePlatform());
     loadState()
       .then(value => { currentState.current = value; setState(value); })
@@ -86,6 +89,7 @@ export default function Lexiday() {
         .register("/sw.js")
         .catch(() => toast.error("离线缓存未启用，请联网重新打开应用"));
     return () => {
+      history.scrollRestoration = scrollRestoration;
       window.removeEventListener("popstate", pop);
       window.removeEventListener("online", net);
       window.removeEventListener("offline", net);
@@ -104,10 +108,18 @@ export default function Lexiday() {
     m.addEventListener("change", apply);
     return () => m.removeEventListener("change", apply);
   }, [state?.settings.theme, state?.settings.appearance]);
-  function go(p: string) {
-    history.pushState({}, "", p);
+  useLayoutEffect(() => {
+    if (state) window.scrollTo({ top: Number(history.state?.lexidayScroll) || 0, behavior: "instant" });
+  }, [path, !!state]);
+  function go(p: string, scroll = 0) {
+    history.replaceState({ ...history.state, lexidayScroll: window.scrollY }, "");
+    history.pushState({ lexidayScroll: scroll }, "", p);
     setPath(p);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    if (p === path) window.scrollTo({ top: scroll, behavior: "instant" });
+  }
+  function replace(p: string) {
+    history.replaceState({ ...history.state, lexidayScroll: window.scrollY }, "", p);
+    setPath(p);
   }
   function update(s: Session) {
     setSession(s);
@@ -131,6 +143,7 @@ export default function Lexiday() {
   useEffect(() => { speechRequest.current++; toast.dismiss("speech-loading"); void stopSpeech(); }, [path]);
   const [route, query = ""] = path.split("?");
   const params = new URLSearchParams(query);
+  const returnTo = wordListReturn(params);
   const testing = route === "/test/session" && session && !session.completed;
   if (error)
     return (
@@ -157,10 +170,11 @@ export default function Lexiday() {
   else if (route === "/words")
     content = (
       <Words
-        key={path}
+        key={route}
         state={state}
         go={go}
-        initialDate={params.get("date") || "all"}
+        params={params}
+        replace={replace}
       />
     );
   else if (route.startsWith("/words/"))
@@ -170,10 +184,12 @@ export default function Lexiday() {
         go={go}
         id={route.split("/")[2]}
         speak={speak}
+        back={() => go(returnTo.path, returnTo.scroll)}
+        fromMistakes={returnTo.mistakes}
       />
     );
   else if (route === "/mistakes")
-    content = <Words key="mistakes" state={state} go={go} mistakes />;
+    content = <Words key="mistakes" state={state} go={go} mistakes params={params} replace={replace} />;
   else if (route === "/import")
     content = <ImportPage state={state} save={save} go={go} />;
   else if (route === "/stats") content = <Stats state={state} go={go} />;
