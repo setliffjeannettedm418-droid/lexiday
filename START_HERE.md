@@ -1,6 +1,6 @@
 # 从 ChatGPT Work 迁移到 Codex
 
-这是词序 Lexiday **v1.10.2 英语二阅读与段落翻译版**的源码接手包，Android versionCode 为 **15**。
+这是词序 Lexiday **v1.10.3 词库返回与阅读当日加词修复版**的源码接手包，Android versionCode 为 **16**。
 保留自动判分、每日复习和三种主题；当前功能和验证状态见 HANDOFF.md。
 
 ## 电脑本地开发（最直接）
