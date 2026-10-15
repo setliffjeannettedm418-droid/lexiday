@@ -1,9 +1,10 @@
 import { z } from "zod";
 import catalogData from "./catalog.json";
-import type { ExamParagraphTranslation, ExamReadingArticle, ExamSentenceAnalysis, ReadingLookup, State, Word } from "../../types";
-import { dictionaryCandidates, normalizeWord, readingTokens } from "../reading/matcher";
+import type { ExamParagraphTranslation, ExamReadingArticle, ExamSentenceAnalysis, ReadingLookup, State } from "../../types";
+import { normalizeWord, readingTokens } from "../reading/matcher";
 import { lookupSchema, type LookupSelection } from "../reading/lookup";
-import { newId } from "../../utils/id";
+import { addCollectedWord, type CollectedWord } from "../reading/collection";
+export type { CollectedWord } from "../reading/collection";
 import { today } from "../../db";
 
 export interface ExamSource { id: string; year: number; number: number; title: string; sourceName: string; sourceUrl: string; documentUrl: string }
@@ -62,25 +63,17 @@ export function saveExamLookup(state: State, id: string, entry: ReadingLookup): 
     throw new Error("原文已更新，请重新选择单词。");
   return saveExamArticle(state, { ...article, lookups: [...(article.lookups || []).filter(old => !(old.surface === entry.surface && old.start === entry.start && old.sentence === entry.sentence)), entry].slice(-400) });
 }
-export interface CollectedWord { word: string; phonetic: string; commonMeaning: string; contextMeaning: string; usage: string }
 export function collectExamWord(state: State, id: string, selection: LookupSelection, draft: CollectedWord, date = today()): State {
   const source = examSource(id), article = state.examReading?.articles.find(item => item.id === id);
   if (!source || !article || !hasExamSentence(article, selection.sentence) || selection.sentence.slice(selection.start, selection.start + selection.surface.length) !== selection.surface)
     throw new Error("原文已更新，请重新选择单词。");
-  if (!draft.word.trim() || !draft.commonMeaning.trim()) throw new Error("请先取得可用的词义。");
-  const candidates = dictionaryCandidates(selection.surface);
-  if (!candidates.includes(normalizeWord(draft.word))) throw new Error("原形与所选词不一致，请核对词典后再加入。");
-  const existing = state.words.find(word => normalizeWord(word.word) === normalizeWord(draft.word))
-    || state.words.find(word => candidates.includes(normalizeWord(word.word)));
+  const collected = addCollectedWord(state, selection, draft, { tags: ["英语二真题", String(source.year)], source: `英语二 ${source.year} Text ${source.number} · ${source.sourceName}` }, date);
+  const word = collected.word;
   const now = Date.now();
-  const word: Word = existing || { id: newId(), word: draft.word.trim(), phonetic: draft.phonetic, commonMeaning: draft.commonMeaning.trim(), rareMeaning: "", usage: draft.usage,
-    example: selection.sentence, tags: ["英语二真题", String(source.year)], source: `英语二 ${source.year} Text ${source.number} · ${source.sourceName}`, createdAt: now, updatedAt: now };
-  const day = state.days.find(item => item.date === date);
-  const wordIds = [...new Set([...(day?.wordIds || []), word.id])];
   const context = { wordId: word.id, articleId: id, surface: selection.surface, sentence: selection.sentence, meaning: draft.contextMeaning || draft.commonMeaning, createdAt: now };
   const contexts = [...(state.examReading?.contexts || [])];
   if (!contexts.some(old => old.wordId === word.id && old.articleId === id && old.surface === selection.surface && old.sentence === selection.sentence)) contexts.push(context);
-  return { ...state, words: existing ? state.words : [...state.words, word], days: day ? state.days.map(item => item.date === date ? { ...item, wordIds } : item) : [...state.days, { date, wordIds }],
+  return { ...collected.state,
     examReading: { version: 1, articles: state.examReading?.articles || [], contexts } };
 }
 export function saveExamAnalysis(state: State, id: string, analysis: ExamSentenceAnalysis): State {
