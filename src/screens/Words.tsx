@@ -1,6 +1,5 @@
 import { PronunciationButtons } from "../components/PronunciationButtons";
 import { type Speak } from "../features/audio/speech";
-import { useState } from "react";
 import { Search, ArrowLeft, Volume2, ArrowRight } from "lucide-react";
 import {
   Picker,
@@ -11,27 +10,28 @@ import {
 } from "../components/ui";
 import type { State } from "../types";
 import { modes } from "../features/quiz/engine";
+import { readWordListView, wordListPath, type WordListView } from "../features/words/view";
 export function Words({
   state,
   go,
   mistakes = false,
-  initialDate = "all",
+  params,
+  replace,
 }: {
   state: State;
   go: (p: string) => void;
   mistakes?: boolean;
-  initialDate?: string;
+  params: URLSearchParams;
+  replace: (p: string) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [date, setDate] = useState(initialDate);
-  const [sort, setSort] = useState("default");
-  const [page, setPage] = useState(0);
-  const day = state.days.find((d) => d.date === date);
+  const view = readWordListView(params);
+  const { query, filter, date, sort, page } = view;
+  const change = (next: Partial<WordListView>) => replace(wordListPath(mistakes, { ...view, ...next }));
+  const dayIds = new Set(state.days.filter(d => d.date === date).flatMap(d => d.wordIds));
   const list = state.words.filter(
     (w) =>
       (!mistakes || state.records[w.id]?.wrongCount > 0) &&
-      (date === "all" || day?.wordIds.includes(w.id)) &&
+      (date === "all" || dayIds.has(w.id)) &&
       (filter === "all" || filter === "mastered"
         ? filter !== "mastered" || state.records[w.id]?.mastery >= 3
         : (state.records[w.id]?.mastery || 0) === Number(filter)) &&
@@ -80,8 +80,7 @@ export function Words({
             placeholder="搜索单词或中文释义"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(0);
+              change({ query: e.target.value, page: 0 });
             }}
           />
         </label>
@@ -89,8 +88,7 @@ export function Words({
           label="词表日期"
           value={date}
           onChange={(v) => {
-            setDate(v);
-            setPage(0);
+            change({ date: v, page: 0 });
           }}
           items={{
             all: "所有日期",
@@ -102,7 +100,7 @@ export function Words({
         <Picker
           label="排序方式"
           value={sort}
-          onChange={setSort}
+          onChange={sort => change({ sort, page: 0 })}
           items={{ default: "导入顺序", az: "字母 A–Z", wrong: "错误次数" }}
         />
       </div>
@@ -118,8 +116,7 @@ export function Words({
             key={k}
             className={filter === k ? "active" : ""}
             onClick={() => {
-              setFilter(k);
-              setPage(0);
+              change({ filter: k, page: 0 });
             }}
           >
             {v}
@@ -135,7 +132,10 @@ export function Words({
                 key={w.id}
                 word={w}
                 level={state.records[w.id]?.mastery || 0}
-                onClick={() => go("/words/" + w.id)}
+                onClick={() => {
+                  const detail = new URLSearchParams({ from: wordListPath(mistakes, { ...view, page: p }), scroll: String(window.scrollY) });
+                  go("/words/" + w.id + "?" + detail);
+                }}
                 extra={
                   mistakes
                     ? `错误 ${state.records[w.id].wrongCount} 次 · ${modes[state.records[w.id].wrongType] || "测试"} · ${new Date(state.records[w.id].lastWrong).toLocaleString("zh-CN")}`
@@ -156,13 +156,13 @@ export function Words({
       </section>
       {pages > 1 && (
         <div className="pagination">
-          <button disabled={!p} onClick={() => setPage(p - 1)}>
+          <button disabled={!p} onClick={() => change({ page: p - 1 })}>
             上一页
           </button>
           <span>
             {p + 1} / {pages}
           </span>
-          <button disabled={p === pages - 1} onClick={() => setPage(p + 1)}>
+          <button disabled={p === pages - 1} onClick={() => change({ page: p + 1 })}>
             下一页
           </button>
         </div>
@@ -175,19 +175,23 @@ export function WordDetail({
   id,
   go,
   speak,
+  back,
+  fromMistakes = false,
 }: {
   state: State;
   id: string;
   go: (p: string) => void;
   speak: Speak;
+  back: () => void;
+  fromMistakes?: boolean;
 }) {
   const w = state.words.find((w) => w.id === id);
   const r = state.records[id];
   if (!w) return <EmptyState title="没有找到这个单词" />;
   return (
     <div className="detail narrow">
-      <button className="text-button" onClick={() => go("/words")}>
-        <ArrowLeft size={17} /> 返回词库
+      <button className="text-button" onClick={back}>
+        <ArrowLeft size={17} /> {fromMistakes ? "返回错题" : "返回词库"}
       </button>
       <section className="detail-card">
         <div className="section-line">

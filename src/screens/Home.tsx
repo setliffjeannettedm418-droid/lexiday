@@ -15,8 +15,8 @@ export default function Home({ state, go, session }: {
   const now = useReviewClock();
   const planned = useMemo(() => reviewForDate(buildReviewPlan(state, now), localStudyDate(now), localStudyDate(now)), [state, now]);
   const plannedDone = planned.filter(item => item.status === "done").length;
-  const day = state.days.find(d => d.date === today());
-  const todayCount = state.words.filter(w => day?.wordIds.includes(w.id)).length;
+  const dayIds = new Set(state.days.filter(d => d.date === today()).flatMap(d => d.wordIds));
+  const todayCount = state.words.filter(w => dayIds.has(w.id)).length;
   const due = state.words.filter(w => state.records[w.id]?.nextReview <= Date.now()).length;
   const batches = state.reading?.batches || [];
   const latest = [...batches].reverse().find(b => b.articles.length > 0);

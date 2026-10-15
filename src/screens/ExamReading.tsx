@@ -12,6 +12,7 @@ import { WordLookupSheet } from "../features/reading/WordLookupSheet";
 import { explainExamSentence, translateExamParagraph } from "../features/reading/service";
 import { today } from "../db";
 import { newId } from "../utils/id";
+import { isWordInDay } from "../features/reading/collection";
 
 function TapSentence({ sentence, lookup, question = false }: { sentence: string; lookup: (selection: LookupSelection) => void; question?: boolean }) {
   const chunks: React.ReactNode[] = []; let end = 0;
@@ -75,7 +76,7 @@ export default function ExamReading({ state, save, go, speak, controls, id, year
   }
   if (!id) {
     const selectedYear = year && examYears.includes(year) ? year : undefined;
-    const collected = state.examReading?.contexts.filter(context => state.days.find(day => day.date === today())?.wordIds.includes(context.wordId)).map(context => context.wordId) || [];
+    const collected = state.examReading?.contexts.filter(context => isWordInDay(state, context.wordId)).map(context => context.wordId) || [];
     return <div className="exam-reading"><div className="page-heading"><div><div className="eyebrow">ENGLISH II · READ & COLLECT</div><h1>英语二真题阅读</h1><p>在真题里理解词汇，把新收获留给今天。</p></div></div>
       <div className="exam-summary"><span>2010—2026 · 17 年 · 68 篇阅读理解</span><button className="text-button" onClick={() => go(`/words?date=${today()}`)}>今日词表{collected.length ? ` · ${new Set(collected).size} 个采集词` : ""}<ArrowRight size={16} /></button></div>
       {selectedYear ? <><button className="back-link" onClick={() => go("/exam-reading")}><ArrowLeft size={17} />全部年份</button><h2 className="exam-year-title">{selectedYear} 年 · 四篇阅读</h2><div className="exam-articles">{examCatalog.filter(item => item.year === selectedYear).map(item => {
@@ -122,6 +123,6 @@ export default function ExamReading({ state, save, go, speak, controls, id, year
     <div className="exam-reader-links"><button className="secondary" onClick={() => go(`/words?date=${today()}`)}>查看今日词表<ArrowRight size={16} /></button><a className="text-button" href={source.sourceUrl} target="_blank" rel="noopener noreferrer">资料来源<ExternalLink size={15} /></a></div>
     {lookup && article && <WordLookupSheet key={`${id}:${lookup.sentence}:${lookup.start}`} selection={lookup} cached={article.lookups?.find(item => sameLookup(item, lookup))} words={state.words} service={controls.service} busy={controls.busy} speak={speak}
       save={entry => save(current => saveExamLookup(current, source.id, entry))} close={() => setLookup(null)} settings={() => go("/settings")}
-      collect={{ added: !!state.examReading?.contexts.some(item => item.articleId === source.id && item.sentence === lookup.sentence && item.surface === lookup.surface && state.days.find(day => day.date === today())?.wordIds.includes(item.wordId)), add: draft => save(current => collectExamWord(current, source.id, lookup, draft)) }} />}
+      collect={{ added: !!state.examReading?.contexts.some(item => item.articleId === source.id && item.sentence === lookup.sentence && item.surface === lookup.surface && isWordInDay(state, item.wordId)), add: draft => save(current => collectExamWord(current, source.id, lookup, draft)) }} />}
   </div>;
 }

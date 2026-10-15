@@ -7,10 +7,12 @@ import { PronunciationButtons } from "../components/PronunciationButtons";
 import type { ReadingArticle, SaveState, State, Word } from "../types";
 import type { Speak } from "../features/audio/speech";
 import { coverage, learnedWords, pendingWords, unmatchedWords } from "../features/reading/engine";
-import { findHighlights, readingTokens } from "../features/reading/matcher";
+import { findHighlights, readingTokens, dictionaryCandidates, normalizeWord } from "../features/reading/matcher";
 import { cacheLookup, sameLookup, type LookupSelection } from "../features/reading/lookup";
 import { WordLookupSheet } from "../features/reading/WordLookupSheet";
 import type { useReading } from "../features/reading/useReading";
+import { collectReadingWord, addWordToDay, isWordInDay } from "../features/reading/collection";
+import { CollectTodayButton } from "../features/reading/CollectTodayButton";
 // Lookup caches may change without changing the text the learner selected.
 const articleContext = (article?: ReadingArticle) => article ? JSON.stringify([article.title, article.titleTranslation, article.sentences]) : "";
 export function ReadingProgress({ state, go }: { state: State; go: (p: string) => void }) {
@@ -80,6 +82,7 @@ export default function Reading({ state, save, go, speak, controls, id }: { stat
       </Accordion></article>}
     {batch.error && <p role="alert" className="reading-error">{batch.error}</p>}{actions(batch)}<p className="reading-footnote">由 {batch.model || "AI"} 生成的原创练习。覆盖检查核对词形与详解完整性，不代表所有语言分析都已由教师审核。</p>
     <Sheet open={!!word && !!vocabulary} onOpenChange={open => !open && setSelected(null)}><SheetContent side="bottom" className="reading-word-sheet"><SheetHeader><SheetTitle>{word?.word}</SheetTitle><SheetDescription>{word?.phonetic} · 语境词义与应用</SheetDescription></SheetHeader>
+      {word && <CollectTodayButton key={word.id} added={isWordInDay(state, word.id)} add={() => save(current => addWordToDay(current, word.id))} hint="加入当天词表，保留已有释义和学习进度。" />}
       {word && vocabulary && <div className="reading-word-content"><PronunciationButtons word={word.word} speak={speak} />{article?.sentences[vocabulary.sentence] ? <blockquote>{article.sentences[vocabulary.sentence].english}</blockquote> : <p className="reading-review-note">正文位置待核对，以下生成说明暂不能作为本句用法依据。可回到阅读页补全。</p>}<dl><dt>{vocabulary.sentence >= 0 ? "本句词义" : "词义说明"} · {vocabulary.partOfSpeech}</dt><dd>{vocabulary.meaning}</dd><dt>搭配与使用限制</dt><dd>{vocabulary.usage}</dd><dt>词义辨析与易错点</dt><dd>{vocabulary.contrast}</dd><dt>换个语境再用一次</dt><dd><p>{vocabulary.example}</p><p className="muted">{vocabulary.exampleTranslation}</p></dd><dt>我的词库原义</dt><dd>{word.commonMeaning}{word.rareMeaning && <p>熟词僻义：{word.rareMeaning}</p>}</dd></dl></div>}
     </SheetContent></Sheet>
     {lookup && article && lookup.articleContext === context && <WordLookupSheet key={`${articleIndex}:${lookup.sentence}:${lookup.start}`} selection={lookup} cached={article.lookups?.find(entry => sameLookup(entry, lookup))} words={state.words} service={service} busy={busy} speak={speak}
@@ -87,6 +90,11 @@ export default function Reading({ state, save, go, speak, controls, id }: { stat
         const current = s.reading?.batches.find(b => b.id === batch.id)?.articles[articleIndex];
         if (!current || articleContext(current) !== lookup.articleContext) throw new Error("原文已更新，请重新选择单词。");
         return cacheLookup(s, batch.id, articleIndex, entry);
-      })} close={() => setLookup(null)} settings={() => go("/settings")} />}
+      })} close={() => setLookup(null)} settings={() => go("/settings")}
+      collect={{ added: state.words.some(word => dictionaryCandidates(lookup.surface).includes(normalizeWord(word.word)) && isWordInDay(state, word.id)), add: draft => save(current => {
+        const currentArticle = current.reading?.batches.find(b => b.id === batch.id)?.articles[articleIndex];
+        if (articleContext(currentArticle) !== lookup.articleContext) throw new Error("原文已更新，请重新选择单词。");
+        return collectReadingWord(current, batch.id, articleIndex, lookup, draft);
+      }) }} />}
     </div>;
 }
