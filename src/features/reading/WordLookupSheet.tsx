@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpenText, Check, LoaderCircle, Plus, Sparkles } from "lucide-react";
+import { BookOpenText, LoaderCircle, Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PronunciationButtons } from "../../components/PronunciationButtons";
@@ -9,7 +9,8 @@ import { dictionaryCandidates, normalizeWord } from "./matcher";
 import { lookupDictionary, lookupCollectionDictionary, wordForms, type DictionaryEntry, type LookupSelection } from "./lookup";
 import { explainReadingWord, type ReadingServiceStatus } from "./service";
 import { newId } from "../../utils/id";
-import type { CollectedWord } from "../exams/engine";
+import type { CollectedWord } from "./collection";
+import { CollectTodayButton } from "./CollectTodayButton";
 
 export function WordLookupSheet({ selection, cached, words, service, busy, speak, save, close, settings, collect }: {
   selection: LookupSelection; cached?: ReadingLookup; words: Word[]; service: ReadingServiceStatus; busy: boolean;
@@ -26,9 +27,6 @@ export function WordLookupSheet({ selection, cached, words, service, busy, speak
   const [saved, setSaved] = useState(!!cached);
   const [online, setOnline] = useState(navigator.onLine);
   const active = useRef<AbortController | null>(null);
-  const collecting = useRef(false), mounted = useRef(true);
-  const [adding, setAdding] = useState(false), [addError, setAddError] = useState("");
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     let alive = true;
     void (collect ? lookupCollectionDictionary : lookupDictionary)(selection.surface).then(entry => { if (alive) setDictionary(entry); })
@@ -53,17 +51,12 @@ export function WordLookupSheet({ selection, cached, words, service, busy, speak
   const headword = explanation?.headword || local?.word || dictionary?.word || selection.surface;
   const phonetic = explanation?.phonetic || local?.phonetic || dictionary?.phonetic;
   const commonMeaning = local?.commonMeaning || dictionary?.meaning || explanation?.meaning || "";
-  async function addWord() {
-    if (!collect || collect.added || collecting.current || !commonMeaning) return;
-    collecting.current = true; setAdding(true); setAddError("");
-    try { await collect.add({ word: headword, phonetic: phonetic || "", commonMeaning, contextMeaning: explanation?.meaning || commonMeaning, usage: explanation?.usage || local?.usage || "" }); }
-    catch (e) { if (mounted.current) setAddError(e instanceof Error ? e.message : "加词保存失败，请重试。"); }
-    finally { collecting.current = false; if (mounted.current) setAdding(false); }
-  }
   return <Sheet open onOpenChange={open => { if (!open) close(); }}><SheetContent side="bottom" className="reading-word-sheet reading-lookup-sheet">
     <SheetHeader><SheetTitle>{selection.surface}</SheetTitle><SheetDescription>{headword !== selection.surface ? `原词 ${headword} · ` : ""}{phonetic ? `${phonetic} · ` : ""}阅读查词{saved ? " · 解析已保存" : ""}</SheetDescription></SheetHeader>
     <div className="reading-word-content"><PronunciationButtons word={headword} speak={speak} />
-      {collect && <section className="exam-collect"><button className="primary wide" disabled={adding || collect.added || !commonMeaning} onClick={() => void addWord()}>{adding ? <LoaderCircle size={17} className="reading-spinning" /> : collect.added ? <Check size={17} /> : <Plus size={17} />}{adding ? "正在保存…" : collect.added ? "已加入今日词表" : "加入今日词表"}</button><p role="status">{collect.added ? "原句与年份来源已保存，已有学习进度继续保留。" : dictionaryLoading && !commonMeaning ? "正在读取离线词义…" : !commonMeaning ? "词典未收录此词，可先获取本句详解再加入。" : "保存原形、释义和原句；首次测试后开始复习排期。"}</p>{addError && <p className="reading-error" role="alert">{addError}</p>}</section>}
+      {collect && <CollectTodayButton added={collect.added} disabled={!commonMeaning}
+        hint={dictionaryLoading && !commonMeaning ? "正在读取离线词义…" : !commonMeaning ? "词典未收录此词，可先获取本句详解再加入。" : undefined}
+        add={() => collect.add({ word: headword, phonetic: phonetic || "", commonMeaning, contextMeaning: explanation?.meaning || commonMeaning, usage: explanation?.usage || local?.usage || "" })} />}
       <blockquote>{selection.sentence.slice(0, selection.start)}<mark>{selection.surface}</mark>{selection.sentence.slice(selection.start + selection.surface.length)}</blockquote>
       {explanation ? <section aria-label="生词语境解析" className="reading-lookup-explanation"><span className="reading-lookup-badge"><Sparkles size={14} />本句详解{saved ? " · 可离线查看" : ""}</span><dl>
         <dt>本句词义 · {explanation.partOfSpeech}</dt><dd>{explanation.meaning}</dd>
