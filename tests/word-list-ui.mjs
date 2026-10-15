@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require(require.resolve('playwright', { paths: [process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES || process.cwd()] }));
+const output = process.env.LEXIDAY_TEST_OUTPUT;
+if (output) mkdirSync(output, { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.LEXIDAY_CHROME, headless: true, args: ['--no-sandbox'] });
+try {
+ const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Shanghai' });
+ const page = await context.newPage(); const errors = [];
+ page.on('pageerror', e => errors.push(e.message));
+ const words = Array.from({ length: 448 }, (_, i) => ({id: `list-${i}`, word: `word${String(i).padStart(3,'0')}`, phonetic:'',commonMeaning:'测试释义',rareMeaning:'',usage:'',example:'',tags:[],source:'isolated-regression',createdAt:1,updatedAt:2}));
+ const state = {words,records:Object.fromEntries(words.map(w=>[w.id,{wordId:w.id,correctCount:0,wrongCount:1,mastery:1,lastReview:0,nextReview:0,lastResult:false,streakCorrect:0,streakWrong:1,lastWrong:1,wrongType:'en',rareCorrect:0,rareTotal:0}])),attempts:[],days:[{date:'2026-10-14',wordIds:words.map(w=>w.id)}],settings:{theme:'light',appearance:'aurora',goal:30,count:'20',mode:'en',rareFirst:false,audio:false,audioVersion:1,readingAuto:false}};
+ await page.goto('http://127.0.0.1:4173/settings');
+ await page.getByLabel('导入备份',{exact:true}).setInputFiles({name:'list.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({version:1,data:state}))});
+ await page.getByRole('button',{name:'确认操作',exact:true}).click();
+ await page.getByText('备份已恢复',{exact:true}).waitFor();
+ await page.locator('.bottom-navigation').getByRole('button',{name:'词库',exact:true}).click();
+ const paging = () => page.locator('.pagination span');
+ await page.getByRole('button',{name:'下一页',exact:true}).click();
+ await page.getByRole('button',{name:'下一页',exact:true}).click();
+ assert.equal((await paging().innerText()).trim(),'3 / 15');
+ const row = page.locator('.word-row').nth(25);
+ await row.scrollIntoViewIfNeeded();
+ const before = await page.evaluate(()=>scrollY);
+ await row.click(); await page.getByRole('heading',{name:'word085',exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>scrollY),0);
+ await page.getByRole('button',{name:'返回词库',exact:true}).click();
+ assert.equal((await paging().innerText()).trim(),'3 / 15','returning from word details must retain page 3');
+ await page.waitForFunction(y=>Math.abs(scrollY-y)<3,before);
+ if(output) await page.screenshot({path:join(output,'returned-page-3.png'),animations:'disabled'});
+ // Browser back is the same history path used by Android's existing back handler.
+ await page.locator('.word-row').nth(24).click();
+ await page.goBack();
+ assert.equal((await paging().innerText()).trim(),'3 / 15');
+ // Filter, date and sort survive a detail visit and a reload; typing keeps focus.
+ await page.getByLabel('搜索单词或释义').fill('word0');
+ await page.getByLabel('搜索单词或释义').press('End');
+ assert.equal(await page.getByLabel('搜索单词或释义').evaluate(el=>el===document.activeElement),true);
+ await page.getByLabel('词表日期').click(); await page.getByRole('option',{name:'2026-10-14',exact:true}).click();
+ await page.getByLabel('排序方式').click(); await page.getByRole('option',{name:'字母 A–Z',exact:true}).click();
+ await page.getByRole('button',{name:'未掌握',exact:true}).click();
+ await page.getByRole('button',{name:'下一页',exact:true}).click();
+ const listPath = new URL(page.url()).pathname+new URL(page.url()).search;
+ await page.locator('.word-row').nth(20).click();
+ await page.getByRole('button',{name:'返回词库',exact:true}).click();
+ assert.equal(new URL(page.url()).pathname+new URL(page.url()).search,listPath);
+ await page.reload();
+ assert.equal(await page.getByLabel('搜索单词或释义').inputValue(),'word0');
+ assert.equal((await paging().innerText()).trim(),'2 / 4');
+ assert.match(await page.getByLabel('词表日期').innerText(),/2026-10-14/);
+ assert.match(await page.getByLabel('排序方式').innerText(),/字母 A–Z/);
+ // The mistake list has its own return destination.
+ await page.evaluate(()=>{history.pushState({},'', '/mistakes');dispatchEvent(new PopStateEvent('popstate'));});
+ await page.getByRole('button',{name:'下一页',exact:true}).click();
+ await page.locator('.word-row').nth(20).click();
+ await page.getByRole('button',{name:'返回错题',exact:true}).click();
+ assert.equal(new URL(page.url()).pathname,'/mistakes');
+ assert.equal((await paging().innerText()).trim(),'2 / 15');
+ assert.deepEqual(errors,[]);
+ console.log('PASS: word list page, scroll, filters, reload and history back');
+ await context.close();
+} finally { await browser.close(); }

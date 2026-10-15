@@ -18,7 +18,7 @@ try {
   if (Date.now() >= deadline) throw new Error(`Preview did not start: ${diagnostics}`);
   await new Promise(resolve => setTimeout(resolve, 200));
  }
- for (const file of ['tests/photo-import-ui.mjs', 'tests/quiz-dates-ui.mjs', 'tests/reading-ui.mjs', 'tests/reading-lookup-ui.mjs', 'tests/audio-ui.mjs', 'tests/review-ui.mjs']) {
+ for (const file of ['tests/word-list-ui.mjs', 'tests/photo-import-ui.mjs', 'tests/quiz-dates-ui.mjs', 'tests/reading-ui.mjs', 'tests/reading-lookup-ui.mjs', 'tests/audio-ui.mjs', 'tests/review-ui.mjs']) {
   console.log(`Checking ${file}`);
   await new Promise((resolve, reject) => {
    const child = spawn(process.execPath, [file], { stdio: 'inherit' });

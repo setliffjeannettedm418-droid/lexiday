@@ -25,6 +25,7 @@ async function mount({ busy = false, networkGate, saveGate } = {}) {
   let state = { words, records: {}, attempts: [], days: [], settings: { theme: "light", goal: 30, count: "20", mode: "en", rareFirst: false, audio: false }, reading: { version: 1, batches: [{ id: "batch", words, createdAt: 0, articles: [article], status: busy ? "generating" : "paused", autoEligible: false }] } };
   let controls = { service: { configured: true, model: "deepseek-flash" }, serviceError: "", run() {}, pause() {}, busy, refreshService: async () => {} };
   const requests = [];
+  let failSave = false;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (path, options) => {
     if (String(path).startsWith("/dictionary/")) return new Response("{}");
@@ -40,6 +41,7 @@ async function mount({ busy = false, networkGate, saveGate } = {}) {
   const root = createRoot(element);
   function render() {
     root.render(createElement(Reading, { state, save: async next => {
+      if (failSave) { failSave = false; throw new Error("测试：保存失败，请重试"); }
       if (saveGate) await saveGate;
       state = typeof next === "function" ? next(state) : next;
       render();
@@ -48,6 +50,13 @@ async function mount({ busy = false, networkGate, saveGate } = {}) {
   await act(async () => render());
   return {
     requests,
+    get state() { return state; },
+    failNextSave() { failSave = true; },
+    async collect() { await act(async () => [...document.querySelectorAll("button")].find(b => b.textContent === "加入今日词表").click()); },
+    async openTarget() {
+      await act(async () => [...element.querySelectorAll("button")].find(b => b.textContent === "查看本篇 20 词与应用").click());
+      await act(async () => element.querySelector('.reading-word-list button').click());
+    },
     article: () => state.reading.batches[0].articles[0],
     sheet: () => document.querySelector(".reading-lookup-sheet"),
     async open() { await act(async () => element.querySelector('[aria-label="查词 resilience"]').click()); },
@@ -69,6 +78,39 @@ test("repairing an article closes a lookup for the replaced text before another 
     await view.replace(["The city grew stronger after the storm."]);
     assert.equal(!!view.sheet(), false);
     assert.equal(view.requests.length, 0);
+  } finally { await view.close(); }
+});
+
+test("ordinary reading's lookup adds a word to today's test, and failed saves can be retried", async () => {
+  const view = await mount();
+  try {
+    await view.open(); await view.explain();
+    view.failNextSave(); await view.collect();
+    assert.equal(view.state.words.length,80);
+    assert.match(view.sheet().textContent,/保存失败/);
+    assert(!view.sheet().textContent.includes("已加入今日词表"));
+    await view.collect();
+    const added=view.state.words.find(w=>w.word==="resilience"); assert(added);
+    const { today } = await import("../src/db/index.ts");
+    const { selectQuizWords } = await import("../src/features/quiz/selection.ts");
+    const todays=selectQuizWords(view.state,{scope:"today",mode:"en",today:today(),dates:{kind:"days",dates:[]}});
+    assert.deepEqual(todays.map(w=>w.id),[added.id]);
+    assert.equal(view.state.attempts.length,0);
+    assert.equal(view.sheet().querySelector('.exam-collect button').disabled,true);
+    assert.match(view.sheet().textContent,/已加入今日词表/);
+    assert.equal(view.requests.length,1);
+  } finally { await view.close(); }
+});
+
+test("a highlighted reading target can join today without changing the stored word", async () => {
+  const view = await mount();
+  try {
+    const before=structuredClone(view.state.words[0]);
+    await view.openTarget(); await view.collect();
+    assert.deepEqual(view.state.words[0],before);
+    assert(view.state.days.some(day=>day.wordIds.includes(before.id)));
+    assert.equal(view.state.words.length,80);
+    assert.equal(view.state.attempts.length,0);
   } finally { await view.close(); }
 });
 
