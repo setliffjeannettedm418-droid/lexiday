@@ -37,7 +37,7 @@ try {
   assert.equal(overflows,false);
   await page.screenshot({path:`${output}/audio-ui-${width}.png`,fullPage:true});
   await page.getByRole('button',{name:'暂时想不起来，显示答案'}).click();
-  await page.getByRole('button',{name:/^不会/}).click();
+  assert.equal(await page.locator('.rating-buttons').count(),0);
   await page.getByRole('button',{name:/下一题/}).click();
   await page.waitForFunction(()=>audioCalls.length===4);
   assert.equal((await page.evaluate(()=>audioCalls.at(-1))).lang,'en-US');

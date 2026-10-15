@@ -1,0 +1,558 @@
+/* Theme style is independent from the light / dark appearance preference. */
+:root[data-app-theme="paper"] {
+  --background: #f4f3ef;
+  --foreground: #262724;
+  --surface: #fffefb;
+  --muted-foreground: #66685f;
+  --muted: #eeeee8;
+  --line: #d9dad1;
+  --primary: #343a35;
+  --primary-foreground: #fffefb;
+  --secondary: #e5e8df;
+  --secondary-foreground: #3b4539;
+  --accent: #e9ebe3;
+  --accent-foreground: #354232;
+  --card: #fffefb;
+  --card-foreground: #262724;
+  --popover: #fffefb;
+  --popover-foreground: #262724;
+  --border: #d9dad1;
+  --input: #afb3a6;
+  --ring: #53614d;
+  --green: #376447;
+  --orange: #906020;
+  --red: #a43d38;
+  --destructive: #a43d38;
+  --shadow: none;
+  --wash-a: #f4f3ef;
+  --wash-b: #f4f3ef;
+  --screen-end: #f4f3ef;
+  --reader-a: #fffefb;
+  --reader-b: #fffefb;
+  --reading-card: #fffefb;
+  --theme-card-radius: 6px;
+  --theme-control-radius: 5px;
+  --theme-panel-shadow: none;
+  --theme-display-font: Georgia, "Times New Roman", "Lexiday CJK", serif;
+}
+
+:root[data-app-theme="paper"].dark {
+  --background: #20211f;
+  --foreground: #efefe7;
+  --surface: #292b27;
+  --muted-foreground: #b1b6a8;
+  --muted: #32352e;
+  --line: #484d41;
+  --primary: #d9e2ca;
+  --primary-foreground: #262c22;
+  --secondary: #3b4433;
+  --secondary-foreground: #d4dec6;
+  --accent: #3f4937;
+  --accent-foreground: #e0e8d4;
+  --card: #292b27;
+  --card-foreground: #efefe7;
+  --popover: #292b27;
+  --popover-foreground: #efefe7;
+  --border: #484d41;
+  --input: #777f6b;
+  --ring: #c4d7ad;
+  --green: #a0c99e;
+  --orange: #e0ba7a;
+  --red: #efa7a0;
+  --destructive: #efa7a0;
+  --wash-a: #20211f;
+  --wash-b: #20211f;
+  --screen-end: #20211f;
+  --reader-a: #292b27;
+  --reader-b: #292b27;
+  --reading-card: #292b27;
+}
+
+:root[data-app-theme="aurora"] {
+  --background: #edf3fd;
+  --foreground: #203451;
+  --surface: #ffffff;
+  --muted-foreground: #546a88;
+  --muted: #e9effa;
+  --line: #d3def1;
+  --primary: #335cce;
+  --primary-foreground: #ffffff;
+  --secondary: #dfebff;
+  --secondary-foreground: #2d53ad;
+  --accent: #e2edfc;
+  --accent-foreground: #2a51a4;
+  --card: #ffffff;
+  --card-foreground: #203451;
+  --popover: #ffffff;
+  --popover-foreground: #203451;
+  --border: #d3def1;
+  --input: #9aafd1;
+  --ring: #4975d8;
+  --green: #23745e;
+  --orange: #936220;
+  --red: #b04458;
+  --destructive: #b04458;
+  --shadow: 0 6px 22px #183e7c08;
+  --wash-a: #d3e9ff;
+  --wash-b: #e8e4ff;
+  --screen-end: #f6f9ff;
+  --reader-a: #ffffff;
+  --reader-b: #f4f8ff;
+  --reading-card: #ffffff;
+  --theme-card-radius: 16px;
+  --theme-control-radius: 10px;
+  --theme-panel-shadow: 0 6px 22px #183e7c08;
+  --theme-button-end: #426fd3;
+  --theme-button-shadow: 0 5px 13px #315ccb1c;
+}
+
+:root[data-app-theme="aurora"].dark {
+  --background: #101d34;
+  --foreground: #e7eefc;
+  --surface: #1b2c48;
+  --muted-foreground: #a8bad5;
+  --muted: #223552;
+  --line: #354b6a;
+  --primary: #a4c5ff;
+  --primary-foreground: #102646;
+  --secondary: #29486f;
+  --secondary-foreground: #bfd6ff;
+  --accent: #304b72;
+  --accent-foreground: #c8dcff;
+  --card: #1b2c48;
+  --card-foreground: #e7eefc;
+  --popover: #1b2c48;
+  --popover-foreground: #e7eefc;
+  --border: #354b6a;
+  --input: #6982a7;
+  --ring: #a4c5ff;
+  --green: #8ad2b7;
+  --orange: #e9c583;
+  --red: #ffabba;
+  --destructive: #ffabba;
+  --shadow: 0 6px 22px #00000014;
+  --wash-a: #17334d;
+  --wash-b: #252845;
+  --screen-end: #12223d;
+  --reader-a: #1b2c48;
+  --reader-b: #192941;
+  --reading-card: #233b5b;
+  --theme-panel-shadow: 0 6px 22px #00000014;
+  --theme-button-end: #afdaf0;
+  --theme-button-shadow: none;
+}
+
+/* Shared geometry overrides only apply to the two added styles. */
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .apricot-app :is(
+  .detail-card, .settings-section, .reading-book, .reading-summary,
+  .reading-paper, .home-reading-card, .home-entry-grid button, .answer,
+  .photo-import, .photo-draft-card, .upload-zone, .chart-panel, .large,
+  .result-words
+) {
+  border: 1px solid var(--line);
+  border-radius: var(--theme-card-radius);
+  box-shadow: var(--theme-panel-shadow);
+}
+
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .apricot-app :is(
+  .primary, .secondary, .search, .segmented button, .mode-grid button,
+  .quiz-date-list label, .filter-row button, .reading-tabs button,
+  .pronunciation-buttons button, .resume, .feedback, .note,
+  .quiz-date-filter, .reading-notice, .reading-service-description,
+  .reading-review-note, .photo-warning, .photo-review-note, .preview-wrap,
+  input:not([type="checkbox"]), textarea, select
+) {
+  border-radius: var(--theme-control-radius);
+}
+
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .apricot-app .picker {
+  border-radius: var(--theme-control-radius) !important;
+}
+
+/* Answer feedback must retain its semantic borders after card restyling. */
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .apricot-app .answer.right {
+  border-color: var(--green);
+}
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .apricot-app .answer.wrong {
+  border-color: var(--red);
+}
+
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .apricot-app .chart-legend {
+  color: var(--primary);
+}
+
+/* These surfaces are rendered through portals, outside .apricot-app. */
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) :is(
+  [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+  [data-slot="select-content"], [data-slot="popover-content"]
+) {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+  border-radius: var(--theme-card-radius);
+  font-family: var(--app-font);
+}
+
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .reading-word-sheet {
+  border-top: 1px solid var(--line);
+  border-radius: var(--theme-card-radius) var(--theme-card-radius) 0 0;
+}
+:root:is([data-app-theme="paper"], [data-app-theme="aurora"]) .reading-word-sheet :is(
+  .reading-lookup-request, .pronunciation-buttons button, .primary, .secondary
+) {
+  border-radius: var(--theme-control-radius);
+}
+
+/* 墨白书页: quiet paper, crisp rules, editorial English typography. */
+:root[data-app-theme="paper"] body:has(.apricot-app) {
+  background: var(--background);
+}
+:root[data-app-theme="paper"] .apricot-app :is(.top-navigation, .bottom-navigation) {
+  background: var(--background);
+  box-shadow: none;
+}
+:root[data-app-theme="paper"] .apricot-app .top-navigation {
+  border-bottom: 1px solid var(--line);
+}
+:root[data-app-theme="paper"] .apricot-app .bottom-navigation {
+  border-top: 1px solid var(--line);
+}
+:root[data-app-theme="paper"] .apricot-app .brand-mark {
+  border-radius: 5px;
+}
+:root[data-app-theme="paper"] .apricot-app .icon-button {
+  border-radius: 6px;
+}
+:root[data-app-theme="paper"] .apricot-app :is(.home-intro h1, .page-heading h1) {
+  font-weight: 650;
+  letter-spacing: -.015em;
+}
+:root[data-app-theme="paper"] .apricot-app :is(
+  .english, .word-row strong, .focus-word, .home-goals strong,
+  .home-reading-card h2, .reading-book h2, .reading-paper h1,
+  .reading-prose, .reading-analysis h3
+) {
+  font-family: var(--theme-display-font);
+  letter-spacing: -.015em;
+}
+:root[data-app-theme="paper"] .apricot-app .english {
+  font-weight: 500;
+}
+:root[data-app-theme="paper"] .apricot-app .reading-prose {
+  letter-spacing: 0;
+  line-height: 2;
+}
+:root[data-app-theme="paper"] .apricot-app .home-goals {
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  gap: 20px;
+}
+:root[data-app-theme="paper"] .apricot-app .home-goals > button + button {
+  border-left: 1px solid var(--line);
+  padding-left: 20px;
+}
+:root[data-app-theme="paper"] .apricot-app .home-reading-card {
+  border-top: 3px solid var(--primary);
+  background: var(--surface);
+}
+:root[data-app-theme="paper"] .apricot-app .reading-paper {
+  background: var(--surface);
+}
+:root[data-app-theme="paper"] .apricot-app .quiz-top {
+  font-family: var(--theme-display-font);
+}
+:root[data-app-theme="paper"] .apricot-app .answer > span {
+  font-family: var(--theme-display-font);
+  font-size: 15px;
+}
+:root[data-app-theme="paper"] .apricot-app .bottom-navigation button.active::after {
+  width: 20px;
+  height: 2px;
+  border-radius: 0;
+}
+:root[data-app-theme="paper"] .reading-word-sheet :is(
+  [data-slot="sheet-title"], .reading-word-content blockquote
+) {
+  font-family: var(--theme-display-font);
+}
+:root[data-app-theme="paper"] .reading-word-sheet .reading-word-content blockquote {
+  border-radius: 0;
+}
+
+/* 极光蓝: geometric panels, cool light, precise blue accents. */
+:root[data-app-theme="aurora"] .apricot-app .primary {
+  background: linear-gradient(115deg, var(--primary), var(--theme-button-end));
+  box-shadow: var(--theme-button-shadow);
+  font-weight: 600;
+}
+:root[data-app-theme="aurora"] .apricot-app .brand-mark {
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--primary), var(--theme-button-end));
+}
+:root[data-app-theme="aurora"] .apricot-app .home-goals {
+  gap: 12px;
+}
+:root[data-app-theme="aurora"] .apricot-app .home-goals > button {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--theme-card-radius);
+  background: var(--surface);
+  box-shadow: var(--theme-panel-shadow);
+}
+:root[data-app-theme="aurora"] .apricot-app .home-goals strong {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(32px, 10vw, 46px);
+}
+:root[data-app-theme="aurora"] .apricot-app .home-entry-grid button {
+  min-height: 72px;
+}
+:root[data-app-theme="aurora"] .apricot-app .home-entry-grid svg {
+  stroke-width: 1.9;
+}
+:root[data-app-theme="aurora"] .apricot-app .home-reading-card {
+  border-top: 3px solid var(--primary);
+  background: linear-gradient(125deg, var(--reading-card), var(--accent));
+}
+:root[data-app-theme="aurora"] .apricot-app .bottom-navigation {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+:root[data-app-theme="aurora"] .apricot-app .bottom-navigation button.active {
+  background: var(--secondary);
+  border-radius: 12px;
+}
+:root[data-app-theme="aurora"] .apricot-app .bottom-navigation button.active::after {
+  display: none;
+}
+:root[data-app-theme="aurora"] .apricot-app .answer > span {
+  width: 26px;
+  height: 26px;
+  background: var(--muted);
+  border-radius: 6px;
+}
+:root[data-app-theme="aurora"] .apricot-app .quiz-shell > .progress {
+  height: 5px !important;
+}
+
+/* Three selectable miniatures show the actual style even when not selected. */
+.apricot-app .theme-style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin: 18px 0 8px;
+}
+.apricot-app .theme-style-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 13px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--foreground);
+  text-align: left;
+  align-items: start;
+}
+.apricot-app .theme-style-card[aria-pressed="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+  background: var(--muted);
+}
+.apricot-app .theme-style-card:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+.apricot-app .theme-style-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.apricot-app .theme-style-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.apricot-app .theme-style-description {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.apricot-app .theme-style-state {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 20px;
+  margin-top: 3px;
+}
+.apricot-app .theme-style-card[aria-pressed="true"] .theme-style-state {
+  color: var(--primary);
+  font-weight: 600;
+}
+.theme-style-card[data-theme="apricot"] {
+  --preview-bg: #faf1e8;
+  --preview-surface: #fffcf8;
+  --preview-text: #604b3c;
+  --preview-line: #ddc8b6;
+  --preview-accent: #926242;
+  --preview-end: #926242;
+  --preview-radius: 11px;
+}
+.theme-style-card[data-theme="paper"] {
+  --preview-bg: #f4f3ef;
+  --preview-surface: #fffefb;
+  --preview-text: #343a35;
+  --preview-line: #c6c9bc;
+  --preview-accent: #343a35;
+  --preview-end: #343a35;
+  --preview-radius: 2px;
+}
+.theme-style-card[data-theme="aurora"] {
+  --preview-bg: #e9f1ff;
+  --preview-surface: #ffffff;
+  --preview-text: #33527f;
+  --preview-line: #bfd0ed;
+  --preview-accent: #335cce;
+  --preview-end: #709deb;
+  --preview-radius: 6px;
+}
+.dark .theme-style-card[data-theme="apricot"] {
+  --preview-bg: #302720;
+  --preview-surface: #44372c;
+  --preview-text: #f8f0e8;
+  --preview-line: #81664f;
+  --preview-accent: #e4bb94;
+  --preview-end: #e4bb94;
+}
+.dark .theme-style-card[data-theme="paper"] {
+  --preview-bg: #20211f;
+  --preview-surface: #292b27;
+  --preview-text: #efefe7;
+  --preview-line: #737a67;
+  --preview-accent: #d9e2ca;
+  --preview-end: #d9e2ca;
+}
+.dark .theme-style-card[data-theme="aurora"] {
+  --preview-bg: #101d34;
+  --preview-surface: #1b2c48;
+  --preview-text: #e7eefc;
+  --preview-line: #5c7fae;
+  --preview-accent: #a4c5ff;
+  --preview-end: #afdaf0;
+}
+.apricot-app .theme-style-preview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-content: start;
+  height: 115px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--preview-line);
+  border-radius: 9px;
+  background: var(--preview-bg);
+  overflow: hidden;
+}
+.apricot-app .theme-style-preview > span {
+  display: block;
+}
+.apricot-app .theme-preview-top {
+  width: 20%;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--preview-line);
+}
+.apricot-app .theme-preview-title {
+  width: 65%;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--preview-text);
+}
+.apricot-app .theme-preview-line {
+  width: 100%;
+  height: 17px;
+  border-radius: var(--preview-radius);
+  background: var(--preview-surface);
+  border: 1px solid var(--preview-line);
+}
+.apricot-app .theme-preview-button {
+  width: 70%;
+  height: 17px;
+  border-radius: var(--preview-radius);
+  background: linear-gradient(115deg, var(--preview-accent), var(--preview-end));
+}
+.apricot-app .theme-style-card[data-theme="paper"] .theme-style-preview {
+  border-radius: 2px;
+}
+.apricot-app .theme-style-card[data-theme="paper"] .theme-preview-title {
+  height: 11px;
+  border-top: 1px solid var(--preview-text);
+  border-bottom: 2px solid var(--preview-text);
+  background: transparent;
+  border-radius: 0;
+}
+.apricot-app .theme-style-card[data-theme="aurora"] .theme-style-preview {
+  background: linear-gradient(140deg, var(--preview-bg), var(--preview-surface));
+}
+
+@media (max-width: 800px) {
+  :root[data-app-theme="paper"] .apricot-app .reading-paper {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+  }
+  :root[data-app-theme="aurora"] .apricot-app .reading-paper {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .apricot-app .theme-style-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .apricot-app .theme-style-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+    grid-template-rows: auto;
+    gap: 13px;
+    align-items: center;
+    padding: 12px;
+  }
+  .apricot-app .theme-style-preview {
+    height: 101px;
+    padding: 10px;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .apricot-app .theme-style-card {
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+  .apricot-app .theme-style-preview {
+    padding: 8px;
+  }
+  .apricot-app .theme-style-name {
+    font-size: 14px;
+  }
+  :root[data-app-theme="aurora"] .apricot-app .home-goals > button {
+    padding: 12px;
+  }
+  :root[data-app-theme="paper"] .apricot-app .home-goals > button + button {
+    padding-left: 14px;
+  }
+}

@@ -3,14 +3,20 @@ import { ProgressBar } from "../components/ui";
 import { today } from "../db";
 import { pendingWords } from "../features/reading/engine";
 import type { State, Session } from "../types";
+import { useMemo } from "react";
+import { buildReviewPlan, localStudyDate, reviewForDate } from "../features/review/plan";
+import { useReviewClock } from "../features/review/useReviewClock";
 
 export default function Home({ state, go, session }: {
   state: State;
   go: (path: string) => void;
   session: Session | null;
 }) {
-  const day = state.days.find(d => d.date === today());
-  const todayCount = state.words.filter(w => day?.wordIds.includes(w.id)).length;
+  const now = useReviewClock();
+  const planned = useMemo(() => reviewForDate(buildReviewPlan(state, now), localStudyDate(now), localStudyDate(now)), [state, now]);
+  const plannedDone = planned.filter(item => item.status === "done").length;
+  const dayIds = new Set(state.days.filter(d => d.date === today()).flatMap(d => d.wordIds));
+  const todayCount = state.words.filter(w => dayIds.has(w.id)).length;
   const due = state.words.filter(w => state.records[w.id]?.nextReview <= Date.now()).length;
   const batches = state.reading?.batches || [];
   const latest = [...batches].reverse().find(b => b.articles.length > 0);
@@ -31,12 +37,14 @@ export default function Home({ state, go, session }: {
         <span>到期复习</span><strong>{due}<small>词</small></strong>
       </button>
     </div>
+    <button className="home-review-plan" onClick={() => go("/review")}><span><strong><CalendarDays size={17} />每日复习计划</strong><small>{planned.length ? `今日已完成 ${plannedDone} / ${planned.length} 词 · 待复习 ${planned.length - plannedDone} 词` : "查看记忆曲线与每日复习词表"}</small></span><ChevronRight size={19} /></button>
     <button className="primary wide home-start" onClick={() => go("/test/setup")}>开始测试<ArrowRight size={18} /></button>
     {unfinished && <button className="home-resume" onClick={() => go("/test/session")}>继续上次测试 · 第 {session.index + 1} 题<ChevronRight size={16} /></button>}
     <div className="home-entry-grid">
       <button onClick={() => go("/import")}><Upload size={20} /><span>导入词表</span></button>
       <button onClick={() => go("/test/setup?scope=dates")}><CalendarDays size={20} /><span>按日期选词</span></button>
     </div>
+    <button className="home-exam-entry" onClick={() => go("/exam-reading")}><BookOpenText size={23} /><span><strong>英语二真题阅读</strong><small>2010—2026 · 点词查义，加入今日词表</small></span><ArrowRight size={18} /></button>
     <button className="home-reading-card" onClick={() => go(latest ? `/reading/${encodeURIComponent(latest.id)}` : "/reading")}>
       <span className="home-reading-label"><BookOpenText size={17} />阅读巩固</span>
       <h2>{latest?.articles[0]?.title || "在文章里，\n重新遇见学过的词。"}</h2>

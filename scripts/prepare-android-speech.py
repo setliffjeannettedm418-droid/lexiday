@@ -35,5 +35,5 @@ else:
    dest=ASSETS/relative;dest.parent.mkdir(parents=True,exist_ok=True)
    with archive.extractfile(member) as src,dest.open('wb') as out:shutil.copyfileobj(src,out)
    assert dest.stat().st_size==member.size
- hashes={str(p.relative_to(ASSETS)):digest(p) for p in sorted(ASSETS.rglob('*')) if p.is_file() and p.name!='checksums.json'}
+ hashes={p.relative_to(ASSETS).as_posix():digest(p) for p in sorted(ASSETS.rglob('*')) if p.is_file() and p.name!='checksums.json'}
  (ASSETS/'checksums.json').write_text(json.dumps(hashes,indent=2));assert valid();print('Prepared',len(hashes),'speech assets.')

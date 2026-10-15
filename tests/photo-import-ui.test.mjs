@@ -99,3 +99,26 @@ test("leaving the photo page aborts an in-flight request without storing draft w
     assert.equal(signal.aborted, true); assert.equal(ui.saves(), 0);
   } finally { globalThis.fetch = original; await clearService(); }
 });
+
+test("dropping a word file during photo recognition cannot replace the photo preview", async () => {
+  await configureService("test-key-not-a-real-secret", "deepseek-flash");
+  const original = globalThis.fetch; let resolveResponse; let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Promise(resolve => { resolveResponse = resolve; }); };
+  const ui = await mount();
+  try {
+    await pick(ui); await click(ui.button("识别并整理"));
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", { value: { files: [new File([JSON.stringify([{ word: "unexpected", commonMeaning: "不应进入预览" }])], "unexpected.json")] } });
+    await act(async () => ui.element.querySelector(".upload-zone").dispatchEvent(event));
+    assert.ok(ui.element.textContent.includes("正在识别并补全"));
+    assert.ok(ui.element.querySelector('[aria-label="上传词表"]').disabled);
+    await act(async () => resolveResponse(response()));
+    assert.equal(calls, 1); assert.equal(ui.saves(), 0);
+    assert.equal(ui.element.querySelector('[aria-label="word 1"]').value, "retain");
+    assert.ok(ui.element.textContent.includes("拍照识词 · DeepSeek"));
+    assert.ok(!ui.element.textContent.includes("unexpected.json"));
+    await click(ui.button("取消导入"));
+    assert.ok(ui.element.querySelector('[aria-label="上传词表"]'));
+    assert.ok(!ui.element.querySelector('[aria-label="上传词表"]').disabled);
+  } finally { await ui.close(); globalThis.fetch = original; await clearService(); }
+});

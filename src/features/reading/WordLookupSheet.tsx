@@ -6,13 +6,16 @@ import { PronunciationButtons } from "../../components/PronunciationButtons";
 import type { Speak } from "../audio/speech";
 import type { ReadingLookup, ReadingWordExplanation, Word } from "../../types";
 import { dictionaryCandidates, normalizeWord } from "./matcher";
-import { lookupDictionary, wordForms, type DictionaryEntry, type LookupSelection } from "./lookup";
+import { lookupDictionary, lookupCollectionDictionary, wordForms, type DictionaryEntry, type LookupSelection } from "./lookup";
 import { explainReadingWord, type ReadingServiceStatus } from "./service";
 import { newId } from "../../utils/id";
+import type { CollectedWord } from "./collection";
+import { CollectTodayButton } from "./CollectTodayButton";
 
-export function WordLookupSheet({ selection, cached, words, service, busy, speak, save, close, settings }: {
+export function WordLookupSheet({ selection, cached, words, service, busy, speak, save, close, settings, collect }: {
   selection: LookupSelection; cached?: ReadingLookup; words: Word[]; service: ReadingServiceStatus; busy: boolean;
   speak: Speak; save: (entry: ReadingLookup) => Promise<void>; close: () => void; settings: () => void;
+  collect?: { added: boolean; add: (draft: CollectedWord) => Promise<void> };
 }) {
   const candidates = dictionaryCandidates(selection.surface);
   const local = words.find(w => candidates.includes(normalizeWord(w.word)));
@@ -26,7 +29,7 @@ export function WordLookupSheet({ selection, cached, words, service, busy, speak
   const active = useRef<AbortController | null>(null);
   useEffect(() => {
     let alive = true;
-    void lookupDictionary(selection.surface).then(entry => { if (alive) setDictionary(entry); })
+    void (collect ? lookupCollectionDictionary : lookupDictionary)(selection.surface).then(entry => { if (alive) setDictionary(entry); })
       .catch(e => { if (alive) setDictionaryError(e instanceof Error ? e.message : "词典读取失败。"); })
       .finally(() => { if (alive) setDictionaryLoading(false); });
     const changed = () => setOnline(navigator.onLine);
@@ -47,9 +50,13 @@ export function WordLookupSheet({ selection, cached, words, service, busy, speak
   }
   const headword = explanation?.headword || local?.word || dictionary?.word || selection.surface;
   const phonetic = explanation?.phonetic || local?.phonetic || dictionary?.phonetic;
+  const commonMeaning = local?.commonMeaning || dictionary?.meaning || explanation?.meaning || "";
   return <Sheet open onOpenChange={open => { if (!open) close(); }}><SheetContent side="bottom" className="reading-word-sheet reading-lookup-sheet">
     <SheetHeader><SheetTitle>{selection.surface}</SheetTitle><SheetDescription>{headword !== selection.surface ? `原词 ${headword} · ` : ""}{phonetic ? `${phonetic} · ` : ""}阅读查词{saved ? " · 解析已保存" : ""}</SheetDescription></SheetHeader>
     <div className="reading-word-content"><PronunciationButtons word={headword} speak={speak} />
+      {collect && <CollectTodayButton added={collect.added} disabled={!commonMeaning}
+        hint={dictionaryLoading && !commonMeaning ? "正在读取离线词义…" : !commonMeaning ? "词典未收录此词，可先获取本句详解再加入。" : undefined}
+        add={() => collect.add({ word: headword, phonetic: phonetic || "", commonMeaning, contextMeaning: explanation?.meaning || commonMeaning, usage: explanation?.usage || local?.usage || "" })} />}
       <blockquote>{selection.sentence.slice(0, selection.start)}<mark>{selection.surface}</mark>{selection.sentence.slice(selection.start + selection.surface.length)}</blockquote>
       {explanation ? <section aria-label="生词语境解析" className="reading-lookup-explanation"><span className="reading-lookup-badge"><Sparkles size={14} />本句详解{saved ? " · 可离线查看" : ""}</span><dl>
         <dt>本句词义 · {explanation.partOfSpeech}</dt><dd>{explanation.meaning}</dd>

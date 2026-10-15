@@ -1,5 +1,6 @@
 import { newId } from "../../utils/id";
 import type { Word, State } from "../../types";
+import { isCalendarDate } from "../quiz/selection";
 export type Draft = Partial<Word> & {
   word: string;
   commonMeaning: string;
@@ -39,6 +40,12 @@ const aliases: Record<string, string[]> = {
   tags: ["tags", "标签"],
 };
 const norm = (s: string) => s.replace(/\s/g, "").toLowerCase();
+const normalizeTags = (value: unknown): string[] => [...new Set(
+  (Array.isArray(value) ? value : [value])
+    .filter((tag): tag is string => typeof tag === "string")
+    .flatMap(tag => tag.split(/[,，;；]/))
+    .map(tag => tag.trim()).filter(Boolean),
+)];
 export function fromRows(rows: unknown[][]): Draft[] {
   let map: Record<number, string> = {};
   const out: Draft[] = [];
@@ -206,7 +213,7 @@ export async function parseFile(file: File): Promise<Draft[]> {
     throw Error(
       "未识别到词汇。支持带“单词/常见意思”表头的表格，以及带“核心义/考研点/搭配”的双栏词汇卡片；扫描或手写词表请使用“拍照导入”选择照片。",
     );
-  return rows.map((x) => ({ ...x, source: file.name }));
+  return rows.map((x) => ({ ...x, tags: normalizeTags(x.tags), source: file.name }));
 }
 export function mergeImport(
   state: State,
@@ -214,6 +221,7 @@ export function mergeImport(
   policy: string,
   date: string,
 ): State {
+  if (!isCalendarDate(date)) throw Error("请选择有效的词表日期。");
   const words = state.words.map((w) => ({ ...w }));
   const byWord = new Map(words.map((w) => [w.word.trim().toLowerCase(), w]));
   const originalIds = new Set(state.words.map((w) => w.id));
@@ -224,24 +232,27 @@ export function mergeImport(
     const key = d.word.trim().toLowerCase();
     let w = byWord.get(key);
     if (w) {
-      if (policy !== "skip")
-        for (const k of [
-          "phonetic",
-          "commonMeaning",
-          "rareMeaning",
-          "usage",
-          "example",
-        ] as const) {
-          const value = d[k] || "";
-          w[k] =
-            policy === "overwrite"
-              ? value
-              : !value || w[k].includes(value)
-                ? w[k]
-                : w[k]
-                  ? w[k] + "；" + value
-                  : value;
-        }
+      if (policy === "skip") {
+        if (!originalIds.has(w.id)) ids.push(w.id);
+        continue;
+      }
+      for (const k of [
+        "phonetic",
+        "commonMeaning",
+        "rareMeaning",
+        "usage",
+        "example",
+      ] as const) {
+        const value = d[k] || "";
+        w[k] =
+          policy === "overwrite"
+            ? value
+            : !value || w[k].includes(value)
+              ? w[k]
+              : w[k]
+                ? w[k] + "；" + value
+                : value;
+      }
       w.updatedAt = Date.now();
     } else {
       w = {
@@ -252,7 +263,7 @@ export function mergeImport(
         rareMeaning: d.rareMeaning || "",
         usage: d.usage || "",
         example: d.example || "",
-        tags: d.tags || [],
+        tags: normalizeTags(d.tags),
         source: d.source || "导入",
         createdAt: Date.now(),
         updatedAt: Date.now(),

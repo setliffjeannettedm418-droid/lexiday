@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Upload,
   FileText,
@@ -22,6 +22,7 @@ import type { PhotoDraft } from "../features/import/photo";
 import PhotoImport from "./PhotoImport";
 import { today, downloadText } from "../db";
 import type { State, SaveState } from "../types";
+import { isCalendarDate } from "../features/quiz/selection";
 export default function ImportPage({
   state,
   save,
@@ -35,24 +36,36 @@ export default function ImportPage({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [photoSource, setPhotoSource] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoWorking = useRef(false);
+  const parseRequest = useRef(0);
+  const mounted = useRef(true);
+  const saving = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; parseRequest.current++; };
+  }, []);
   const [error, setError] = useState("");
   const [fileName, setName] = useState("");
   const [policy, setPolicy] = useState("merge");
   const [date, setDate] = useState(today());
   const [page, setPage] = useState(0);
   async function parse(file?: File) {
-    if (!file || busy) return;
+    if (!file || saving.current || photoWorking.current) return;
+    const request = ++parseRequest.current;
     setBusy(true);
     setError("");
     try {
-      setDrafts(await parseFile(file));
+      const parsed = await parseFile(file);
+      if (!mounted.current || request !== parseRequest.current) return;
+      setDrafts(parsed);
       setWarnings([]); setPhotoSource(false);
       setName(file.name);
       setPage(0);
     } catch (e) {
-      setError((e as Error).message);
+      if (mounted.current && request === parseRequest.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (mounted.current && request === parseRequest.current) setBusy(false);
     }
   }
   const selected = drafts.filter(
@@ -67,14 +80,18 @@ export default function ImportPage({
       prev.map((d, j) => (j === i ? { ...d, [key]: value } : d)),
     );
   async function confirm() {
+    if (saving.current || busy || photoBusy || !selected.length || !isCalendarDate(date)) return;
+    saving.current = true;
     setBusy(true);
+    setError("");
     try {
       await save(current => mergeImport(current, drafts, policy, date));
-      go("/words?date=" + date);
+      if (mounted.current) go("/words?date=" + date);
     } catch (e) {
-      setError("保存失败，请重试：" + (e as Error).message);
+      if (mounted.current) setError("保存失败，请重试：" + (e as Error).message);
     } finally {
-      setBusy(false);
+      saving.current = false;
+      if (mounted.current) setBusy(false);
     }
   }
   return (
@@ -97,7 +114,12 @@ export default function ImportPage({
       )}
       {!drafts.length ? (
         <>
-          <PhotoImport disabled={busy} onBusy={setBusy} go={go} onResult={result => {
+          <PhotoImport disabled={busy} onBusy={value => {
+            photoWorking.current = value;
+            if (mounted.current) setPhotoBusy(value);
+          }} go={go} onResult={result => {
+            if (!mounted.current) return;
+            parseRequest.current++;
             setDrafts(result.drafts); setWarnings(result.warnings); setPhotoSource(true);
             setName("拍照识词 · DeepSeek"); setPage(0); setError("");
           }} />
@@ -119,10 +141,14 @@ export default function ImportPage({
             </span>
             <input
               type="file"
-              disabled={busy}
+              disabled={busy || photoBusy}
               aria-label="上传词表"
               accept=".docx,.xlsx,.csv,.json"
-              onChange={(e) => void parse(e.target.files?.[0])}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                void parse(file);
+              }}
             />
             <small>文件仅在当前设备解析 · 最大 20 MB</small>
           </label>
@@ -145,7 +171,7 @@ export default function ImportPage({
           </div>
         </>
       ) : (
-        <>
+        <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           {photoSource && <p className="note">AI 整理结果请核对后导入；待核对词默认未勾选。可修改全部字段，考点保存在“熟词僻义 / 考点”中。</p>}
           {warnings.map((warning, i) => <p className="photo-warning" role="status" key={i}>{warning}</p>)}
           <div className="import-controls">
@@ -280,6 +306,7 @@ export default function ImportPage({
             <button
               className="secondary"
               onClick={() => {
+                parseRequest.current++;
                 setDrafts([]);
                 setError(""); setWarnings([]); setPhotoSource(false);
               }}
@@ -288,14 +315,14 @@ export default function ImportPage({
             </button>
             <button
               className="primary"
-              disabled={!selected.length || busy || !date}
+              disabled={!selected.length || busy || !isCalendarDate(date)}
               onClick={() => void confirm()}
             >
               {busy ? "正在导入…" : `确认导入 ${selected.length} 个词`}
               <Check size={18} />
             </button>
           </div>
-        </>
+        </fieldset>
       )}
     </>
   );

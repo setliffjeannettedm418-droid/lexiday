@@ -12,6 +12,7 @@ export interface Word {
   updatedAt: number;
 }
 export interface StudyRecord {
+  firstStudyDate?: string;
   wordId: string;
   correctCount: number;
   wrongCount: number;
@@ -31,6 +32,7 @@ export interface DailyWordList {
   wordIds: string[];
 }
 export interface Attempt {
+  studyDate?: string;
   id: string;
   sessionId: string;
   wordId: string;
@@ -39,8 +41,11 @@ export interface Attempt {
   type: string;
   rating: number;
 }
+export type ThemeStyle = "apricot" | "paper" | "aurora";
 export interface Settings {
+  reviewDays?: number[];
   theme: string;
+  appearance?: ThemeStyle;
   goal: number;
   count: string;
   mode: string;
@@ -56,7 +61,15 @@ export interface State {
   attempts: Attempt[];
   settings: Settings;
   reading?: ReadingState;
+  examReading?: ExamReadingState;
 }
+export interface ExamSentenceAnalysis { sentence: string; translation: string; structure: string; grammar: string; createdAt: number }
+// `paragraph` keeps the exact source text: a body paragraph or one question with its options.
+// Retain the field name so existing paragraph translation backups remain compatible.
+export interface ExamParagraphTranslation { paragraph: string; translation: string; createdAt: number }
+export interface ExamReadingArticle { id: string; paragraphs: string[]; questions: string[]; downloadedAt: number; lookups?: ReadingLookup[]; analyses?: ExamSentenceAnalysis[]; translations?: ExamParagraphTranslation[] }
+export interface ExamWordContext { wordId: string; articleId: string; surface: string; sentence: string; meaning: string; createdAt: number }
+export interface ExamReadingState { version: 1; articles: ExamReadingArticle[]; contexts: ExamWordContext[] }
 export type SaveState = (next: State | ((current: State) => State)) => Promise<void>;
 export interface ReadingSentence { english: string; translation: string; structure: string; grammar: string; pattern: string; application: string; applicationTranslation: string }
 export interface ReadingVocabulary { wordId: string; sentence: number; quote?: string; meaning: string; partOfSpeech: string; usage: string; contrast: string; example: string; exampleTranslation: string }
@@ -74,11 +87,13 @@ export interface Question {
   answer: string;
 }
 export interface Session {
+  reviewDate?: string;
   id: string;
   questions: Question[];
   index: number;
   answers: { wordId: string; correct: boolean }[];
   selected?: string;
+  spelling?: string;
   rating?: number;
   completed: boolean;
   autoReview?: boolean;

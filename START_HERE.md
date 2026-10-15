@@ -1,7 +1,7 @@
 # 从 ChatGPT Work 迁移到 Codex
 
-这是词序 Lexiday **v1.9 暖杏 + DeepSeek 拍照识词版**的源码接手包，Android versionCode 为 **10**。
-开发基线为 GitHub 仓库 v1.8 提交 `87c31aa`；当前功能和验证状态见 HANDOFF.md。
+这是词序 Lexiday **v1.10.3 词库返回与阅读当日加词修复版**的源码接手包，Android versionCode 为 **16**。
+保留自动判分、每日复习和三种主题；当前功能和验证状态见 HANDOFF.md。
 
 ## 电脑本地开发（最直接）
 
@@ -24,7 +24,7 @@
 ## 包内有什么
 
 - React / TypeScript 完整项目与 Android 原生工程、Gradle Wrapper。
-- 暖杏样式、完整中文字体及字体许可、离线词典、153 个初始学习词。
+- 三种主题、记忆曲线与每日复习、完整中文字体及字体许可、离线词典、153 个初始学习词。
 - 锁定依赖文件、测试、Android 构建及资源校验脚本。
 - `AGENTS.md`：Codex 开发约束；`HANDOFF.md`：当前状态与构建说明。
 - `CODEX_PROMPT.txt`：第一条接手指令；`SOURCE_MANIFEST.json`：文件校验清单。

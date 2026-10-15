@@ -20,6 +20,7 @@ import {
 } from "../components/ui";
 import { question, modes, shuffle } from "../features/quiz/engine";
 import { scheduler, reinforcementWords } from "../features/review/scheduler";
+import { firstStudyDays, localStudyDate } from "../features/review/plan";
 import { today } from "../db";
 import { DateSelection } from "../features/quiz/DateSelection";
 import { scopes, quizDays, selectQuizWords, selectedQuizDays, type QuizDateSelection } from "../features/quiz/selection";
@@ -129,7 +130,7 @@ export function Setup({
         <div className="setting-row">
           <div>
             <strong>自动巩固薄弱词</strong>
-            <p>首轮结束后循环错词与模糊词，达到基本掌握后完成；可提前结束。</p>
+            <p>首轮结束后继续巩固薄弱词，连续答对后完成；可提前结束。</p>
           </div>
           <Switch
             aria-label="自动巩固薄弱词"
@@ -173,63 +174,80 @@ export function Quiz({
   go: (p: string) => void;
   speak: Speak;
 }) {
-  const [spelling, setSpelling] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const saving = useRef(false);
+  const answerLock = useRef("");
+  const autoSubmitted = useRef("");
+  const mounted = useRef(false);
+  const currentSession = useRef(session);
+  currentSession.current = session;
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const spelling = session.spelling ?? "";
   const q = session.questions[session.index];
   const w = state.words.find((w) => w.id === q?.wordId);
   const revealed = session.selected !== undefined;
   const correct =
     session.selected?.trim().toLowerCase() === q?.answer.trim().toLowerCase();
+  const attemptId = session.id + "-" + session.index;
   function answer(value: string) {
-    if (!revealed && !busy) update({ ...session, selected: value });
+    if (revealed || busy || saving.current || answerLock.current === attemptId) return;
+    answerLock.current = attemptId;
+    const right = value.trim().toLowerCase() === q.answer.trim().toLowerCase();
+    update({ ...session, selected: value, rating: right ? 3 : 1 });
   }
-  async function next(finish = false) {
-    if (!revealed || !session.rating || saving.current || !w) return;
+  async function next(finish = false, advance = true) {
+    if (!revealed || saving.current || !w) return;
     saving.current = true;
     setBusy(true);
+    setSaveError("");
     try {
-      const attemptId = session.id + "-" + session.index;
-      const alreadySaved = state.attempts.some((a) => a.id === attemptId);
-      const record = alreadySaved
-        ? state.records[w.id]
-        : scheduler.review(
-            state.records[w.id],
-            w.id,
-            correct,
-            session.rating,
-            q.type,
-          );
+      const rating = correct ? 3 : 1;
+      let savedState = state;
       if (!state.attempts.some((a) => a.id === attemptId))
-        await save(current => current.attempts.some(a => a.id === attemptId) ? current : ({
-          ...current,
-          records: { ...current.records, [w.id]: record },
-          attempts: [
-            ...current.attempts,
-            {
-              id: attemptId,
-              sessionId: session.id,
-              wordId: w.id,
-              time: Date.now(),
-              correct,
-              type: q.type,
-              rating: session.rating!,
+        await save(current => {
+          savedState = current;
+          if (current.attempts.some(a => a.id === attemptId)) return current;
+          const now = Date.now();
+          savedState = {
+            ...current,
+            records: {
+              ...current.records,
+              [w.id]: { ...scheduler.review(current.records[w.id], w.id, correct, rating, q.type, now),
+                firstStudyDate: firstStudyDays(current, now).get(w.id) ?? localStudyDate(now) },
             },
-          ],
-        }));
+            attempts: [...current.attempts, {
+              id: attemptId, sessionId: session.id, wordId: w.id,
+              time: now, studyDate: localStudyDate(now), correct, type: q.type, rating,
+            }],
+          };
+          return savedState;
+        });
+      // The answer may finish saving after navigation. Keep the saved attempt,
+      // but never let an old page replace a newer session or force navigation.
+      // Resuming this question can safely advance using the same attempt ID.
+      if (
+        !mounted.current ||
+        currentSession.current.id !== session.id ||
+        currentSession.current.index !== session.index ||
+        !advance
+      ) return;
       const s = {
         ...session,
         index: session.index + 1,
         answers: [...session.answers, { wordId: w.id, correct }],
         selected: undefined,
         rating: undefined,
+        spelling: undefined,
         completed: session.index + 1 >= session.questions.length,
       };
       if (s.completed && session.autoReview && !finish) {
-        const recordMap = { ...state.records, [w.id]: record };
         const weak = reinforcementWords(
-          state.words,
-          recordMap,
+          savedState.words,
+          savedState.records,
           s.answers.map((a) => a.wordId),
         );
         if (weak.length) {
@@ -238,7 +256,7 @@ export function Quiz({
             ...weak
               .slice(0, 10)
               .map((word) =>
-                question(word, state.words, "mixed", state.settings.rareFirst),
+                question(word, savedState.words, "mixed", savedState.settings.rareFirst),
               ),
           ];
           s.completed = false;
@@ -246,14 +264,24 @@ export function Quiz({
       }
       if (finish) s.completed = true;
       update(s);
-      setSpelling("");
       if (s.completed) go("/test/result");
       else window.scrollTo({ top: 0, behavior: "instant" });
+    } catch {
+      if (mounted.current && currentSession.current.id === session.id && currentSession.current.index === session.index)
+        setSaveError("学习记录暂未保存，请重试后继续。");
     } finally {
       saving.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
+  useEffect(() => {
+    if (!revealed) setSaveError("");
+    if (!revealed || !w || busy || saving.current || autoSubmitted.current === attemptId) return;
+    autoSubmitted.current = attemptId;
+    // Persist both outcomes immediately. Incorrect answers stay open for review;
+    // correct answers advance only after their learning record has been saved.
+    void next(false, correct);
+  }, [attemptId, session.selected, busy]);
   useEffect(() => {
     let active = true;
     const timer = setTimeout(() => {
@@ -267,8 +295,9 @@ export function Quiz({
   }, [session.id, session.index, state.settings.audio]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (busy || saving.current || e.repeat) return;
       if (
-        (e.target as HTMLElement)?.matches(
+        e.target instanceof Element && e.target.matches(
           "input,textarea,[contenteditable=true]",
         )
       )
@@ -283,14 +312,9 @@ export function Quiz({
         e.preventDefault();
         answer("");
       }
-      if (revealed && ["n", "m", "k"].includes(e.key.toLowerCase()))
-        update({
-          ...session,
-          rating: { n: 1, m: 2, k: 3 }[e.key.toLowerCase()],
-        });
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && revealed && (!correct || saveError)) {
         e.preventDefault();
-        void next();
+        void next(false, correct || !saveError);
       }
     };
     window.addEventListener("keydown", handler);
@@ -302,8 +326,8 @@ export function Quiz({
       <div className="quiz-top">
         <button
           className="icon-button"
-          aria-label="暂停并返回测试设置"
-          onClick={() => go("/test/setup")}
+          aria-label={session.reviewDate ? "暂停并返回复习计划" : "暂停并返回测试设置"}
+          onClick={() => go(session.reviewDate ? "/review" : "/test/setup")}
         >
           <ArrowLeft />
         </button>
@@ -346,12 +370,12 @@ export function Quiz({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="输入英文单词…"
-                value={spelling}
-                disabled={revealed}
-                onChange={(e) => setSpelling(e.target.value)}
+                value={revealed ? session.selected : spelling}
+                disabled={revealed || busy}
+                onChange={(e) => update({ ...session, spelling: e.target.value })}
               />
               <button
-                disabled={revealed || !spelling.trim()}
+                disabled={revealed || busy || !spelling.trim()}
                 className="primary wide"
               >
                 确认答案
@@ -363,7 +387,7 @@ export function Quiz({
                 key={option}
                 index={i}
                 text={option}
-                disabled={revealed}
+                disabled={revealed || busy}
                 onClick={() => answer(option)}
                 state={
                   !revealed
@@ -378,7 +402,7 @@ export function Quiz({
             ))
           )}
           {!revealed && (
-            <button className="text-button reveal" onClick={() => answer("")}>
+            <button className="text-button reveal" disabled={busy} onClick={() => answer("")}>
               暂时想不起来，显示答案
             </button>
           )}
@@ -421,39 +445,30 @@ export function Quiz({
       </section>
       {revealed && (
         <section className="rating-area">
-          <p>这一次，你真的掌握了吗？</p>
-          <div className="rating-buttons">
-            {["不会", "模糊", "掌握"].map((v, i) => (
-              <button
-                key={v}
-                onClick={() => update({ ...session, rating: i + 1 })}
-                className={
-                  session.rating === i + 1 ? "selected r" + (i + 1) : ""
-                }
-              >
-                {v}
-                <kbd>{["N", "M", "K"][i]}</kbd>
-              </button>
-            ))}
-          </div>
+          <p>{correct ? "答对了，自动进入下一题。" : "本题判为不会，记住答案后继续。"}</p>
+          {saveError && <p role="alert">{saveError}</p>}
           <button
             className="primary wide"
-            disabled={!session.rating || busy}
-            onClick={() => void next()}
+            disabled={busy || (correct && !saveError)}
+            onClick={() => void next(false, correct || !saveError)}
           >
             {busy
               ? "正在保存…"
-              : session.index + 1 === session.questions.length
+              : saveError
+                ? "重试保存"
+                : correct
+                  ? "正在进入下一题…"
+                  : session.index + 1 === session.questions.length
                 ? session.autoReview
                   ? "保存并继续"
                   : "完成测试"
                 : "下一题"}
             <ArrowRight size={18} />
           </button>
-          {session.autoReview && (
+          {session.autoReview && !correct && (
             <button
               className="text-button finish-session"
-              disabled={!session.rating || busy}
+              disabled={busy}
               onClick={() => void next(true)}
             >
               保存本题并结束本次测试
@@ -462,7 +477,7 @@ export function Quiz({
         </section>
       )}
       <p className="keyboard-tip">
-        1–4 选择答案 · Space 显示答案 · N / M / K 评价 · Enter 下一题
+        1–4 选择答案 · 答对自动下一题 · Space 显示答案 · Enter 继续
       </p>
     </div>
   );
@@ -496,6 +511,9 @@ export function Result({
       .filter(Boolean) as Word[];
     start({
       id: newId(),
+      autoReview: session.autoReview ?? false,
+      reviewDate: session.reviewDate,
+      initialSize: candidates.length,
       questions: candidates.map((w) => question(w, state.words, "mixed", true)),
       index: 0,
       answers: [],
@@ -538,7 +556,7 @@ export function Result({
             </button>
           ))}
         </div>
-        <p>连续答对并选择“掌握”会逐步提升等级。下一轮优先巩固错词和模糊词。</p>
+        <p>答对自动提升掌握等级，答错自动记为不会。下一轮优先巩固错词和薄弱词。</p>
       </section>
       {(wrong.length > 0 || weak.length > 0) && (
         <button className="primary wide" onClick={retry}>
@@ -549,6 +567,7 @@ export function Result({
       <button className="secondary wide" onClick={() => go("/")}>
         返回首页
       </button>
+      {session.reviewDate && <button className="secondary wide" onClick={() => go("/review")}>返回复习计划</button>}
     </div>
   );
 }

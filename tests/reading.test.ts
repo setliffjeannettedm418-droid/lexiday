@@ -127,3 +127,27 @@ test("saved unmatched vocabulary survives backup/restore without fake completion
   assert.equal(coverage(restored.reading!.batches[0]), 79);
   assert.equal(restored.reading!.batches[0].articles.length, 4);
 });
+
+test("a valid quote disambiguates repeated words while repeated full sentences preserve their index", () => {
+  const words = fixture().words.slice(0, 20);
+  words[0].word = "bank";
+  const draft = article(words);
+  draft.sentences[0].english = "The bank approved a loan.";
+  draft.sentences.push({ ...draft.sentences[0], english: "They sat on the river bank." });
+  draft.vocabulary[0] = { ...draft.vocabulary[0], sentence: 0, quote: "They sat on the river bank.", meaning: "河岸" };
+  const located = validateArticle(draft, words);
+  assert.equal(located.vocabulary[0].sentence, 20);
+  assert.equal(located.sentences[located.vocabulary[0].sentence].english, located.vocabulary[0].quote);
+  assert.deepEqual(located.unmatchedWordIds, []);
+
+  draft.sentences.push({ ...draft.sentences[20] });
+  draft.vocabulary[0].sentence = 21;
+  assert.equal(validateArticle(draft, words).vocabulary[0].sentence, 21);
+
+  draft.vocabulary[0].quote = "The bank closed early.";
+  assert.equal(validateArticle(draft, words).vocabulary[0].sentence, 21);
+  draft.vocabulary[0].quote = draft.sentences[1].english;
+  assert.equal(validateArticle(draft, words).vocabulary[0].sentence, 21);
+  draft.vocabulary[0].sentence = 999;
+  assert.equal(validateArticle(draft, words).vocabulary[0].sentence, 0);
+});

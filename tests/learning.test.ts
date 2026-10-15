@@ -116,10 +116,10 @@ test("merge, overwrite, skip preserve identity and daily list uniqueness", () =>
   assert(merged.words[0].commonMeaning.includes("新义"));
   assert.equal(state.words[0].commonMeaning, w.commonMeaning);
   assert.equal(
-    mergeImport(state, [d], "overwrite", "x").words[0].commonMeaning,
+    mergeImport(state, [d], "overwrite", "2026-09-08").words[0].commonMeaning,
     "新义",
   );
-  assert.equal(mergeImport(state, [d], "skip", "x").days.length, 0);
+  assert.equal(mergeImport(state, [d], "skip", "2026-09-08").days.length, 0);
 });
 test("CSV UTF8, XLSX multi-sheet, JSON aliases roundtrip", async () => {
   const csv = new File(

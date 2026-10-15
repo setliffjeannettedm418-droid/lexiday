@@ -1,14 +1,17 @@
 import Dexie from "dexie";
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import type { State, Word } from "../types";
+import type { State, Word, Settings } from "../types";
 import seed from "./seed.json";
 import { initializeReading } from "../features/reading/engine";
+import { normalizeThemeStyle } from "../features/theme/theme";
+import { initializeReview } from "../features/review/plan";
 export const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-export const defaults = {
+export const defaults: Settings = {
   theme: "system",
+  appearance: "apricot",
   goal: 30,
   count: "20",
   mode: "mixed",
@@ -32,7 +35,14 @@ export async function loadState(): Promise<State> {
       saved.value.settings = { ...saved.value.settings, audio: true, audioVersion: 1 };
       await saveState(saved.value);
     }
-    const migrated = initializeReading({ ...saved.value, settings: { ...defaults, ...saved.value.settings } });
+    const migrated = initializeReview(initializeReading({
+      ...saved.value,
+      settings: {
+        ...defaults,
+        ...saved.value.settings,
+        appearance: normalizeThemeStyle(saved.value.settings.appearance),
+      },
+    }));
     await saveState(migrated);
     return migrated;
   }
@@ -54,7 +64,7 @@ export async function loadState(): Promise<State> {
     attempts: [],
     settings: defaults,
   };
-  const initialized = initializeReading(state);
+  const initialized = initializeReview(initializeReading(state));
   await saveState(initialized);
   return initialized;
 }

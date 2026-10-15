@@ -1,0 +1,37 @@
+.exam-reading { max-width: 900px; margin: 0 auto; }
+.exam-summary, .exam-reader-links { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 12px; margin: 10px 0 24px; color: var(--muted-foreground); font-size: 13px; }
+.exam-years { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.exam-year-entry, .exam-article-entry { display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left; border: 1px solid var(--line); padding: 22px; border-radius: 22px; background: var(--surface); color: var(--foreground); min-width: 0; }
+.exam-year-entry strong { display: block; font-size: 29px; line-height: 1.3; font-weight: 600; }
+.exam-year-entry small, .exam-article-entry small { display: block; font-size: 12px; margin-top: 5px; color: var(--muted-foreground); }
+.exam-year-title { margin: 22px 0 18px; }
+.exam-articles { display: grid; gap: 13px; }
+.exam-article-entry { justify-content: flex-start; }
+.exam-article-entry > svg { margin-left: auto; flex-shrink: 0; }
+.exam-article-number { color: var(--primary); font-size: 24px; font-weight: 500; }
+.exam-question { white-space: pre-wrap; overflow-wrap: anywhere; }
+.reading-prose.exam-questions { font-size: 18px; line-height: 1.95; }
+.reading-large .reading-prose.exam-questions { font-size: 21px; }
+.exam-question-block { margin: 0 0 26px; }
+.reading-prose .exam-question { margin: 0 0 10px; }
+.exam-paragraph { margin: 0 0 30px; }
+.reading-prose .exam-paragraph > p { margin-bottom: 10px; }
+.exam-translation-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.exam-translation-tools .text-button { min-height: 40px; font-size: 13px; }
+.exam-translation-tools small { color: var(--muted-foreground); font-size: 11px; }
+.exam-paragraph-translation { margin-top: 12px; padding: 14px 16px; border-left: 3px solid var(--primary); border-radius: 6px; background: var(--surface); font-family: "Noto Sans SC", sans-serif; }
+.exam-paragraph-translation > span { color: var(--muted-foreground); font-size: 11px; }
+.reading-prose .exam-paragraph-translation p { margin: 7px 0 0; font-size: 15px; line-height: 1.85; color: var(--foreground); white-space: pre-wrap; }
+.reading-large .reading-prose .exam-paragraph-translation p { font-size: 17px; }
+.reading-prose .exam-translation-error { font-size: 13px; line-height: 1.6; }
+.exam-collect { margin: 14px 0 20px; }
+.exam-collect p { color: var(--muted-foreground); font-size: 12px; margin: 10px 0; }
+.exam-collect .primary:disabled { opacity: .7; }
+.home-exam-entry { display: flex; align-items: center; gap: 12px; width: 100%; padding: 18px; margin: 16px 0; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; color: var(--foreground); }
+.home-exam-entry > span { flex: 1; }
+.home-exam-entry strong, .home-exam-entry small { display: block; }
+.home-exam-entry small { font-size: 12px; color: var(--muted-foreground); margin-top: 3px; }
+:root[data-app-theme="paper"] :is(.exam-year-entry, .exam-article-entry, .home-exam-entry) { border-radius: 6px; box-shadow: none; }
+:root[data-app-theme="paper"] .exam-year-entry strong { font-family: Georgia, "Times New Roman", serif; }
+:root[data-app-theme="aurora"] :is(.exam-year-entry, .exam-article-entry, .home-exam-entry) { border-radius: 16px; border-left: 3px solid var(--primary); }
+@media (max-width: 600px) { .exam-years { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .exam-year-entry { padding: 18px 14px; } .exam-summary { align-items: flex-start; } }

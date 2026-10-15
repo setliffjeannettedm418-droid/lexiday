@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { version as appVersion } from "../../package.json";
 import {
   Download,
@@ -22,11 +22,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { State, SaveState } from "../types";
 import ReadingSettings from "./ReadingSettings";
+import ReviewSettings from "./ReviewSettings";
+import { initializeReview } from "../features/review/plan";
 import type { useReading } from "../features/reading/useReading";
 import { initializeReading, validateReadingBackup } from "../features/reading/engine";
 import { Picker } from "../components/ui";
 import { download, defaults } from "../db";
 import { modes } from "../features/quiz/engine";
+import { normalizeThemeStyle, themeStyles } from "../features/theme/theme";
+import { validateExamBackup } from "../features/exams/engine";
 export default function Settings({
   state,
   save,
@@ -42,8 +46,36 @@ export default function Settings({
   const [backup, setBackup] = useState<State | null>(null);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const [appearanceSaving, setAppearanceSaving] = useState(false);
+  const appearancePending = useRef(false);
+  const appearance = normalizeThemeStyle(state.settings.appearance);
   const set = (key: string, value: unknown) =>
-    void save(s => ({ ...s, settings: { ...s.settings, [key]: value } }));
+    void save(s => ({ ...s, settings: { ...s.settings, [key]: value } }))
+      .catch(() => setMessage("设置保存失败，请重试。"));
+  async function setAppearance(key: "theme" | "appearance", value: string) {
+    if (appearancePending.current) return;
+    if (key === "appearance" ? appearance === value : state.settings.theme === value) return;
+    appearancePending.current = true;
+    setAppearanceSaving(true);
+    setMessage("");
+    try {
+      await save(current => ({
+        ...current,
+        settings: {
+          ...current.settings,
+          [key]: key === "appearance" ? normalizeThemeStyle(value) : value,
+        },
+      }));
+      setMessage(key === "appearance"
+        ? `已切换为${themeStyles.find(style => style.id === value)?.name ?? "暖杏手账"}`
+        : "明暗模式已更新");
+    } catch {
+      setMessage("主题保存失败，请重试。");
+    } finally {
+      appearancePending.current = false;
+      setAppearanceSaving(false);
+    }
+  }
   async function restore(file?: File) {
     if (!file) return;
     try {
@@ -103,7 +135,11 @@ export default function Settings({
           d.wordIds.some((id) => !ids.has(id))
         )
           throw Error("每日词表不完整");
-      s.settings = { ...defaults, ...s.settings };
+      s.settings = {
+        ...defaults,
+        ...s.settings,
+        appearance: normalizeThemeStyle(s.settings?.appearance),
+      };
       if (
         !["light", "dark", "system"].includes(s.settings.theme) ||
         !Number.isFinite(s.settings.goal) ||
@@ -111,8 +147,9 @@ export default function Settings({
       )
         throw Error("设置格式错误");
       validateReadingBackup(s);
+      validateExamBackup(s);
       s.settings.readingAuto = false;
-      setBackup(initializeReading(s));
+      setBackup(initializeReview(initializeReading(s)));
       setAction("restore");
     } catch (e) {
       setMessage("无法恢复备份：" + (e as Error).message);
@@ -127,7 +164,7 @@ export default function Settings({
           ? backup
           : action === "records"
             ? { ...current, records: {}, attempts: [], reading: { version: 1, batches: [] } }
-            : { ...current, words: [], records: {}, days: [], attempts: [], reading: { version: 1, batches: [] } }
+            : { ...current, words: [], records: {}, days: [], attempts: [], reading: { version: 1, batches: [] }, ...(current.examReading ? { examReading: { ...current.examReading, contexts: [] } } : {}) }
         ),
       );
       clearSession();
@@ -156,10 +193,39 @@ export default function Settings({
       )}
       <section className="settings-section">
         <h2>外观与学习</h2>
+        <div className="theme-style-heading">
+          <h3>风格主题</h3>
+          <p>选择喜欢的界面风格，所有主题都支持浅色和深色。</p>
+        </div>
+        <div className="theme-style-grid" aria-label="风格主题" aria-busy={appearanceSaving}>
+          {themeStyles.map(style => (
+            <button
+              key={style.id}
+              className="theme-style-card"
+              data-theme={style.id}
+              aria-label={style.name}
+              aria-pressed={appearance === style.id}
+              disabled={appearanceSaving}
+              onClick={() => void setAppearance("appearance", style.id)}
+            >
+              <span className="theme-style-preview" aria-hidden="true">
+                <span className="theme-preview-top" />
+                <span className="theme-preview-title" />
+                <span className="theme-preview-line" />
+                <span className="theme-preview-button" />
+              </span>
+              <span className="theme-style-copy">
+                <span className="theme-style-name">{style.name}</span>
+                <span className="theme-style-description">{style.description}</span>
+                <span className="theme-style-state">{appearance === style.id ? "当前使用" : "选择主题"}</span>
+              </span>
+            </button>
+          ))}
+        </div>
         <div className="setting-row">
           <div>
-            <strong>主题</strong>
-            <p>暖杏主题 · 可切换浅色、深色或跟随系统</p>
+            <strong>明暗模式</strong>
+            <p>独立设置屏幕明暗，也可跟随系统自动切换</p>
           </div>
           <div className="segmented theme-picker">
             {[
@@ -170,7 +236,9 @@ export default function Settings({
               <button
                 key={String(k)}
                 className={state.settings.theme === k ? "active" : ""}
-                onClick={() => set("theme", k)}
+                aria-pressed={state.settings.theme === k}
+                disabled={appearanceSaving}
+                onClick={() => void setAppearance("theme", String(k))}
               >
                 <Icon size={16} />
                 {String(t)}
@@ -238,6 +306,7 @@ export default function Settings({
           />
         </div>
       </section>
+      <ReviewSettings state={state} save={save} />
       <ReadingSettings state={state} save={save} controls={readingControls} />
       <section className="settings-section">
         <h2>数据管理</h2>
@@ -284,7 +353,7 @@ export default function Settings({
         <div className="setting-row">
           <div>
             <strong>清空学习记录</strong>
-            <p>保留单词内容与每日词表；同时移除阅读材料和累计进度</p>
+            <p>保留单词、每日词表和已下载真题；移除生成的巩固短文和累计进度</p>
           </div>
           <button
             className="text-button danger"
@@ -296,7 +365,7 @@ export default function Settings({
         <div className="setting-row">
           <div>
             <strong>清空词库</strong>
-            <p>移除所有单词、每日词表、学习记录和阅读材料</p>
+            <p>移除单词、每日词表、学习记录、生成短文及采集词来源；保留已下载真题</p>
           </div>
           <button
             className="text-button danger"

@@ -1,9 +1,10 @@
 import { pronounce, stopSpeech, type Accent } from "./features/audio/speech";
 "use client";
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import {
   BookOpen,
+  CalendarCheck,
   House,
   PanelsTopLeft,
   ScanText,
@@ -30,12 +31,18 @@ import { EmptyState } from "./components/ui";
 import Reading from "./screens/Reading";
 import { queueReading } from "./features/reading/engine";
 import { useReading } from "./features/reading/useReading";
+import { normalizeThemeStyle } from "./features/theme/theme";
+import Review from "./screens/Review";
+import ExamReading from "./screens/ExamReading";
+import { wordListReturn } from "./features/words/view";
 const links = [
   ["/", "首页", House],
   ["/words", "我的词库", BookOpen],
   ["/test/setup", "开始测试", ScanText],
   ["/mistakes", "错题复习", RotateCcw],
+  ["/review", "复习计划", CalendarCheck],
   ["/reading", "阅读巩固", BookOpenText],
+  ["/exam-reading", "真题阅读", BookOpenText],
   ["/stats", "学习统计", ChartNoAxesCombined],
 ] as const;
 const SystemBars = registerPlugin<{ setStyle(options: { style: string }): Promise<void> }>('SystemBars');
@@ -60,6 +67,8 @@ export default function Lexiday() {
   }, []);
   const readingControls = useReading(state, save, offline);
   useEffect(() => {
+    const scrollRestoration = history.scrollRestoration;
+    history.scrollRestoration = "manual";
     document.documentElement.classList.toggle("native-app", Capacitor.isNativePlatform());
     loadState()
       .then(value => { currentState.current = value; setState(value); })
@@ -80,6 +89,7 @@ export default function Lexiday() {
         .register("/sw.js")
         .catch(() => toast.error("离线缓存未启用，请联网重新打开应用"));
     return () => {
+      history.scrollRestoration = scrollRestoration;
       window.removeEventListener("popstate", pop);
       window.removeEventListener("online", net);
       window.removeEventListener("offline", net);
@@ -90,17 +100,26 @@ export default function Lexiday() {
     const m = matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       const dark = state.settings.theme === "dark" || (state.settings.theme === "system" && m.matches);
+      document.documentElement.dataset.appTheme = normalizeThemeStyle(state.settings.appearance);
       document.documentElement.classList.toggle("dark", dark);
       if (Capacitor.isNativePlatform()) void SystemBars.setStyle({ style: dark ? "DARK" : "LIGHT" }).catch(() => {});
     };
     apply();
     m.addEventListener("change", apply);
     return () => m.removeEventListener("change", apply);
-  }, [state?.settings.theme]);
-  function go(p: string) {
-    history.pushState({}, "", p);
+  }, [state?.settings.theme, state?.settings.appearance]);
+  useLayoutEffect(() => {
+    if (state) window.scrollTo({ top: Number(history.state?.lexidayScroll) || 0, behavior: "instant" });
+  }, [path, !!state]);
+  function go(p: string, scroll = 0) {
+    history.replaceState({ ...history.state, lexidayScroll: window.scrollY }, "");
+    history.pushState({ lexidayScroll: scroll }, "", p);
     setPath(p);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    if (p === path) window.scrollTo({ top: scroll, behavior: "instant" });
+  }
+  function replace(p: string) {
+    history.replaceState({ ...history.state, lexidayScroll: window.scrollY }, "", p);
+    setPath(p);
   }
   function update(s: Session) {
     setSession(s);
@@ -124,6 +143,7 @@ export default function Lexiday() {
   useEffect(() => { speechRequest.current++; toast.dismiss("speech-loading"); void stopSpeech(); }, [path]);
   const [route, query = ""] = path.split("?");
   const params = new URLSearchParams(query);
+  const returnTo = wordListReturn(params);
   const testing = route === "/test/session" && session && !session.completed;
   if (error)
     return (
@@ -150,10 +170,11 @@ export default function Lexiday() {
   else if (route === "/words")
     content = (
       <Words
-        key={path}
+        key={route}
         state={state}
         go={go}
-        initialDate={params.get("date") || "all"}
+        params={params}
+        replace={replace}
       />
     );
   else if (route.startsWith("/words/"))
@@ -163,13 +184,18 @@ export default function Lexiday() {
         go={go}
         id={route.split("/")[2]}
         speak={speak}
+        back={() => go(returnTo.path, returnTo.scroll)}
+        fromMistakes={returnTo.mistakes}
       />
     );
   else if (route === "/mistakes")
-    content = <Words key="mistakes" state={state} go={go} mistakes />;
+    content = <Words key="mistakes" state={state} go={go} mistakes params={params} replace={replace} />;
   else if (route === "/import")
     content = <ImportPage state={state} save={save} go={go} />;
   else if (route === "/stats") content = <Stats state={state} go={go} />;
+  else if (route === "/review") content = <Review state={state} session={session} start={start} go={go} />;
+  else if (route === "/exam-reading" || route.startsWith("/exam-reading/"))
+    content = <ExamReading key={path} state={state} save={save} go={go} speak={speak} controls={readingControls} id={route.split("/")[2]} year={Number(params.get("year")) || undefined} />;
   else if (route === "/reading" || route.startsWith("/reading/"))
     content = <Reading key={path} state={state} save={save} go={go} speak={speak} controls={readingControls} id={route.split("/")[2] ? decodeURIComponent(route.split("/")[2]) : undefined} />;
   else if (route === "/settings")
@@ -258,7 +284,7 @@ export default function Lexiday() {
                     ? "light"
                     : "dark",
                 },
-              }))
+              })).catch(() => {})
             }
           >
             {state.settings.theme === "dark" ? (
@@ -297,7 +323,7 @@ export default function Lexiday() {
           ["/", "首页", House],
           ["/words", "词库", BookOpen],
           ["/test/setup", "测试", ScanText],
-          ["/mistakes", "错题", RotateCcw],
+          ["/review", "复习", CalendarCheck],
           ["/reading", "阅读", BookOpenText],
         ].map(([p, label, Icon]) => (
           <button
